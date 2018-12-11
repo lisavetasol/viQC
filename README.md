@@ -66,5 +66,5 @@ The program doesn't require identifications that allow fast and unbiasied qualit
 
 Questions
 ---------
-- [Create an issue](<https://bitbucket.org/levitsky/fractionoptimizer/issues>) with BitBucket.
+- [Create an issue](<https://bitbucket.org/lisavetasol/viqc/admin/issues>) with BitBucket.
 - Email us at pyteomics@googlegroups.com or biolccc@googlegroups.com.
