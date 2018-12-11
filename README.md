@@ -1,7 +1,7 @@
 viQC - Visual&Intuitive quality control for bottom-up proteomics experiments
 ===========================================================================================
 
-![Image](toc_fig.png)
+![Image](example.jpg)
 
 Requirements
 ------------
@@ -15,7 +15,9 @@ Requirements
 Installation via pip 
 
 ``sudo apt-get install python-setuptools python-dev build-essential``
+
 ``sudo easy_install pip``
+
 ``sudo pip install -U lxml numpy matplotlib pyteomics pandas seaborn statsmodels ``
 
 Before use
