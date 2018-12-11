@@ -1,7 +1,8 @@
+![Image](example.jpg)
+
 viQC - Visual&Intuitive quality control for bottom-up proteomics experiments
 ===========================================================================================
 
-![Image](example.jpg)
 
 Requirements
 ------------
