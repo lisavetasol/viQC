@@ -1,45 +1,67 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+viQC - Visual&Intuitive quality control for bottom-up proteomics experiments
+===========================================================================================
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+![Image](toc_fig.png)
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
+Requirements
+------------
+- Python 2.7
+- matplotlib
+- pyteomics
+- pandas
+- seaborn 
+- statsmodels
 
----
+Installation via pip 
 
-## Edit a file
+``sudo apt-get install python-setuptools python-dev build-essential``
+``sudo easy_install pip``
+``sudo pip install -U lxml numpy matplotlib pyteomics pandas seaborn statsmodels ``
 
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
+Before use
+----------
 
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
+Convert your raw files to mzML format. [MSconvert](<http://proteowizard.sourceforge.net/projects.html>) can be used for this purpose. 
+For angle score calculation the list with PSMs is required (by default viQC works with [MPscore](<https://bitbucket.org/markmipt/mp-score>)/[Scavager](<https://bitbucket.org/markmipt/scavager>) results, but it can be changed by optional parameters). 
+For additional information about angle score see the [article](<https://www.sciencedirect.com/science/article/pii/S138738061730146X>)
 
----
+How to use
+----------
+    
+``python2 viQC.py input_mzML_file optional_parameters ``
 
-## Create a file
 
-Next, you’ll add a new file to this repository.
+Optional parameters 
+----------
 
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
+``-o`` - path to save result, by default save in the same folder as an input file
 
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
+``-start`` - delay time before sample actually comes to mass spec; using for precursor intensity and injection time (MS/MS) calculation; 0 by default
 
----
+``-stop`` - time of wash starting; using for precursor intensity and injection time (MS/MS) calculation. By default maximum analysis time
 
-## Clone a repository
+``-charge`` - max charge of precursor ions; 4 by default
 
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
+ANGLE SCORE 
 
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
+``-refmzML`` - mzML file for angle score calculating
 
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+``-refPSM`` - csv file with psm identifications for angle score calculating. It should be noted that by default identification proccess is assumed to be strarted from mgf file, if mzML file was used parameter "-f" should be changed to 0 
+
+``-d`` - delimiter in csv file with psm identifications for angle score calculating; tab by default
+
+``-cn``- column name with spectra names in csv file with psm identifications for angle score calculating; "spectrum" by default
+
+
+Output 
+------
+The output file has the name "viQC_results_InputFileName.png" and contains 8 quality metrics based on MS and MS/MS spectra characteristics. 
+The program doesn't require identifications that allow fast and unbiasied quality control of instrument performance.  
+
+
+
+
+Questions
+---------
+- [Create an issue](<https://bitbucket.org/levitsky/fractionoptimizer/issues>) with BitBucket.
+- Email us at pyteomics@googlegroups.com or biolccc@googlegroups.com.
