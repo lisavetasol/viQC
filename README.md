@@ -51,6 +51,8 @@ ANGLE SCORE
 
 ``-refPSM`` - csv file with psm identifications for angle score calculating. It should be noted that by default identification proccess is assumed to be strarted from mgf file, if mzML file was used parameter "-f" should be changed to 0 
 
+``-f`` - it's assumed that identifications were based on mgf files, in case of mzML file using change this parameter to 1
+
 ``-d`` - delimiter in csv file with psm identifications for angle score calculating; tab by default
 
 ``-cn``- column name with spectra names in csv file with psm identifications for angle score calculating; "spectrum" by default
