@@ -1,18 +1,14 @@
-#!/usr/bin/python
+from __future__ import print_function
 import matplotlib
 matplotlib.use('agg')
 import csv
+import sys
 import pylab
-from pyteomics import fasta, parser,mzml,mgf
-from pyteomics import auxiliary as aux
-import pandas as pd
-import glob
-import itertools
+from pyteomics import mzml
 import seaborn as sns
 import numpy as np
 from statsmodels.nonparametric.smoothers_lowess import lowess
 import os
-from pyteomics import pylab_aux
 import matplotlib.pyplot as plt
 import argparse
 
@@ -86,9 +82,9 @@ def ms1_ms2(starttime_ms1,starttime_ms2,ax):
     width = 0.5
     ms1=len(starttime_ms1)
     ms2=len(starttime_ms2)
-    rects1 = ax.bar([0],ms1, width,alpha=1,color=color[0])
+    ax.bar([0],ms1, width,alpha=1,color=color[0])
     plt.text(0, ms1/2, ms1, ha='center', fontsize=20)
-    rects1 = ax.bar([1],ms2, width,alpha=1,color=color[1])
+    ax.bar([1],ms2, width,alpha=1,color=color[1])
     plt.text(1, ms2/2, ms2, ha='center', fontsize=20)
     ax.set_xticks(np.arange(2))
     xTickMarks = ['MS1','MS2']
@@ -106,8 +102,8 @@ def aqtime(starttime_ms1,starttime_ms2):
             aqtime_ms1.append(starttime_all[i+1][0]-k[0])
         if k[1]==2 and any( [(k[1]-starttime_all[i+1][1])==1,(k[1]-starttime_all[i+1][1])==0] ):
             aqtime_ms2.append(starttime_all[i+1][0]-k[0])
-    a=pylab.hist(np.array(aqtime_ms1)*60 ,histtype='step', lw=2,density=True, label='MS1, sum=%.2f sec'%sum(aqtime_ms1),color=color[0])
-    b=pylab.hist(np.array(aqtime_ms2)*60 ,histtype='step', lw=2, density=True, label='MS2, sum=%.2f sec'%sum(aqtime_ms2),color=color[1])
+    pylab.hist(np.array(aqtime_ms1)*60 ,histtype='step', lw=2,density=True, label='MS1, sum=%.2f min'%sum(aqtime_ms1),color=color[0])
+    pylab.hist(np.array(aqtime_ms2)*60 ,histtype='step', lw=2, density=True, label='MS2, sum=%.2f min'%sum(aqtime_ms2),color=color[1])
     pylab.legend(loc=1,fontsize=12)
     pylab.xlabel("AT, sec",fontsize=15)
     pylab.ylabel("# spectra, normalized", fontsize=15)
@@ -232,9 +228,9 @@ parser.add_argument('-refPSM', nargs='?', help='csv file with psm identification
 parser.add_argument('-refmzML', nargs='?', help='mzML file for angle score calculating')
 parser.add_argument('-d', nargs='?', help='delimiter in csv file with psm identifications for angle score calculating; tab by default',default='\t')
 parser.add_argument('-cn', nargs='?', help='column name with spectra names in csv file with psm identifications for angle score calculating; "spectrum" by default',default='spectrum')
-parser.add_argument('-start', nargs='?', help='delay time before sample actually comes to mass spec; using for precursor intensity and injection time (MS/MS) calculation; 0 by default',default=0)
-parser.add_argument('-stop', nargs='?', help='time of wash starting; using for precursor intensity and injection time (MS/MS) calculation. By default maximum analysis time')
-parser.add_argument('-charge', nargs='?', help='max charge of precursor ions; 4 by default',default=4)
+parser.add_argument('-start', nargs='?', type=float, help='delay time before sample actually comes to mass spec; using for precursor intensity and injection time (MS/MS) calculation; 0 by default',default=0)
+parser.add_argument('-stop', nargs='?', type=float, help='time of wash starting; using for precursor intensity and injection time (MS/MS) calculation. By default maximum analysis time')
+parser.add_argument('-charge', nargs='?', type=int, help='max charge of precursor ions. By default, all charges are considered')
 parser.add_argument('-f', nargs='?', help='format of input file for identification process, 0 for mzML and 1 for mgf; 1 by default',default=4)
 args = parser.parse_args()
 
@@ -250,27 +246,31 @@ else:
       output=args.output
 
 if args.refPSM is None or args.refmzML is None:
-    print ("There is no files for angle score calculation, continue without it")
+    print ("No files for angle score calculation provided, running without them")
 
 name=os.path.split(name_mzml)[1].split('.')[0]
 form=int(args.f)
 name_psm=args.refPSM
 name_mzml_calibr=args.refmzML
-start=int(args.start)
-maxcharge=int(args.charge)
+start=args.start
 delim=str(args.d)
 colname=str(args.cn)
 
 if (args.refPSM is not None) and (os.path.split(name_mzml_calibr)[1].split('.')[0] not in name_psm):
      print ("Warning! File names for angle score calibration don't match")
 
-injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, mz_ms2, angle_x, angle_y, prec_int, psm, x, y, coef= read_data(name_mzml,name_mzml_calibr,name_psm,delim,colname)
+injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, mz_ms2, angle_x, angle_y, prec_int, psm, x, y, coef = read_data(name_mzml,name_mzml_calibr,name_psm,delim,colname)
 
 if args.stop is None:
     finish=max(starttime_ms1)
 else:
-    finish=int(args.stop)
+    finish=args.stop
 
+if args.charge is None:
+    maxcharge=max(charge_ms2)
+    print('Maximum charge in file:', maxcharge)
+else:
+    maxcharge=args.charge
 
 #for pretty pictures
 plt.style.use('seaborn-whitegrid')
@@ -278,7 +278,7 @@ plt.rcParams['ytick.labelsize'] = 15
 plt.rcParams['xtick.labelsize'] = 15
 plt.rcParams['axes.titlesize'] = 15
 plt.rcParams['axes.titlesize']=15
-color=["#b84c7d","#4d8ac9","#4bc490","#7f63b8",'b','g','#edd630']
+color=["#b84c7d","#4d8ac9","#4bc490","#7f63b8",'b','g','#edd630'] + ['k'] * 50
 
 #build pictures
 
@@ -306,7 +306,7 @@ else:
     inten_number_peaks_ms1(angle_x,angle_y)
 print ("saving results")
 
-pylab.savefig('%s/viQC_results_%s.png'%(output,name))
-
+outname = os.path.join(output, name + '_viQC.png')
+pylab.savefig(outname)
+print('Output figure saved to', outname)
 print ('enjoy your QC')
-

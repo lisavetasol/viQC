@@ -31,7 +31,7 @@ For additional information about angle score see the [article](<https://www.scie
 How to use
 ----------
 
-``python2 viQC.py input_mzML_file optional_parameters ``
+``python viQC.py input_mzML``
 
 
 Optional parameters
@@ -49,7 +49,7 @@ ANGLE SCORE
 
 ``-refmzML`` - mzML file for angle score calculation
 
-``-refPSM`` - csv file with psm identifications for angle score calculation. It should be noted that by default identification proccess is assumed to be strarted from mgf file, if mzML file was used parameter "-f" should be changed to 0 
+``-refPSM`` - csv file with psm identifications for angle score calculation. It should be noted that by default identification proccess is assumed to be strarted from mgf file, if mzML file was used parameter "-f" should be changed to 0
 
 ``-d`` - delimiter in csv file with psm identifications for angle score calculation; tab by default
 
@@ -58,7 +58,7 @@ ANGLE SCORE
 
 Output
 ------
-The output file has the name "viQC_results_InputFileName.png" and contains 8 quality metrics based on MS and MS/MS spectra characteristics.
+The output file has the name "InputFileName_viQC.png" and contains 8 quality metrics based on MS and MS/MS spectra characteristics.
 The program doesn't require identifications that allow fast and unbiasied quality control of instrument performance.
 
 
