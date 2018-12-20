@@ -6,14 +6,14 @@ viQC - Visual&Intuitive quality control for bottom-up proteomics experiments
 
 Requirements
 ------------
-- Python 2.7
+- Python 2.7 or 3.x
 - matplotlib
 - pyteomics
 - pandas
-- seaborn 
+- seaborn
 - statsmodels
 
-Installation via pip 
+Installation via pip
 
 ``sudo apt-get install python-setuptools python-dev build-essential``
 
@@ -24,18 +24,18 @@ Installation via pip
 Before use
 ----------
 
-Convert your raw files to mzML format. [MSconvert](<http://proteowizard.sourceforge.net/projects.html>) can be used for this purpose. 
-For angle score calculation the list with PSMs is required (by default viQC works with [MPscore](<https://bitbucket.org/markmipt/mp-score>)/[Scavager](<https://bitbucket.org/markmipt/scavager>) results, but it can be changed by optional parameters). 
+Convert your raw files to mzML format. [MSconvert](<http://proteowizard.sourceforge.net/projects.html>) can be used for this purpose.
+For angle score calculation the list with PSMs is required (by default viQC works with [MPscore](<https://bitbucket.org/markmipt/mp-score>)/[Scavager](<https://bitbucket.org/markmipt/scavager>) results, but it can be changed by optional parameters).
 For additional information about angle score see the [article](<https://www.sciencedirect.com/science/article/pii/S138738061730146X>)
 
 How to use
 ----------
-    
+
 ``python2 viQC.py input_mzML_file optional_parameters ``
 
 
-Optional parameters 
-----------
+Optional parameters
+-------------------
 
 ``-o`` - path to save result, by default save in the same folder as an input file
 
@@ -45,7 +45,7 @@ Optional parameters
 
 ``-charge`` - max charge of precursor ions; 4 by default
 
-ANGLE SCORE 
+ANGLE SCORE
 
 ``-refmzML`` - mzML file for angle score calculation
 
@@ -56,10 +56,10 @@ ANGLE SCORE
 ``-cn``- column name with spectra names in csv file with psm identifications for angle score calculation; "spectrum" by default
 
 
-Output 
+Output
 ------
-The output file has the name "viQC_results_InputFileName.png" and contains 8 quality metrics based on MS and MS/MS spectra characteristics. 
-The program doesn't require identifications that allow fast and unbiasied quality control of instrument performance.  
+The output file has the name "viQC_results_InputFileName.png" and contains 8 quality metrics based on MS and MS/MS spectra characteristics.
+The program doesn't require identifications that allow fast and unbiasied quality control of instrument performance.
 
 
 
@@ -67,4 +67,4 @@ The program doesn't require identifications that allow fast and unbiasied qualit
 Questions
 ---------
 - [Create an issue](<https://bitbucket.org/lisavetasol/viqc/issues>) with BitBucket.
-- Email us at pyteomics@googlegroups.com or biolccc@googlegroups.com.
+- Email us at pyteomics@googlegroups.com.
