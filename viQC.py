@@ -4,7 +4,7 @@ matplotlib.use('agg')
 import csv
 import sys
 import pylab
-from pyteomics import mzml
+from pyteomics import mzml, mgf
 import seaborn as sns
 import numpy as np
 from statsmodels.nonparametric.smoothers_lowess import lowess
@@ -12,7 +12,7 @@ import os
 import matplotlib.pyplot as plt
 import argparse
 
-def read_data(name_mzml, name_mzml_calibration, name_psm,delim,colname):
+def read_data(name_mzml, name_calibration,extension,name_psm,delim,colname):
     print ("reading data")
     injtime_ms1=[]
     injtime_ms2=[]
@@ -24,7 +24,6 @@ def read_data(name_mzml, name_mzml_calibration, name_psm,delim,colname):
     angle_x=[]
     angle_y=[]
     prec_int=[]
-    psm=set()
     x=[]
     y=[]
     a=0
@@ -62,16 +61,18 @@ def read_data(name_mzml, name_mzml_calibration, name_psm,delim,colname):
     #read_for_angle_calibration
     if name_psm is not None:
         print ("reading reference files for angle score calculation")
+        d = {'mgf': mgf.IndexedMGF, 'mzml': mzml.MzML}
+        reader = d[extension.lower()]
+        f=reader(name_calibration)
         with open(name_psm) as fIn:
             reader = csv.DictReader(fIn, delimiter=delim)
             next(reader)
             for row in reader:
-                psm.add(int(row[colname].split('.')[1]))
-        for sc in mzml.read(name_mzml_calibration):
-            if sc['ms level']==2 and len(sc["m/z array"])!=0 and int(sc['id'].split(' ')[2].split('=')[1])+form in psm:
+                psm=row[colname].split(' RTINSECONDS')[0]
+                sc=f[psm]
                 x1=len(sc["m/z array"])
                 x.append(x1)
-                y1=float(sum(sc['intensity array']))/(len(sc['intensity array']))
+                y1=sc['intensity array'].sum(dtype=float)/sc['intensity array'].size
                 y.append(y1)
         coef=10**(len(str(int(np.mean(y))))-1)
         y=np.array(y)/coef
@@ -225,7 +226,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('input', help='mzML file with path')
 parser.add_argument('-o', '--output', help='path to save result, by default save in the folder of the input file')
 parser.add_argument('-refPSM', nargs='?', help='csv file with psm identifications for angle score calculating')
-parser.add_argument('-refmzML', nargs='?', help='mzML file for angle score calculating')
+parser.add_argument('-refFile', nargs='?', help='mgf or mzML file for angle score calculating')
 parser.add_argument('-d', nargs='?', help='delimiter in csv file with psm identifications for angle score calculating; tab by default',default='\t')
 parser.add_argument('-cn', nargs='?', help='column name with spectra names in csv file with psm identifications for angle score calculating; "spectrum" by default',default='spectrum')
 parser.add_argument('-start', nargs='?', type=float, help='delay time before sample actually comes to mass spec; using for precursor intensity and injection time (MS/MS) calculation; 0 by default',default=0)
@@ -245,21 +246,22 @@ if args.output is None:
 else:
       output=args.output
 
-if args.refPSM is None or args.refmzML is None:
+if args.refPSM is None or args.refFile is None:
     print ("No files for angle score calculation provided, running without them")
 
 name=os.path.split(name_mzml)[1].split('.')[0]
 form=int(args.f)
 name_psm=args.refPSM
-name_mzml_calibr=args.refmzML
+name_calibr=args.refFile
+extension=os.path.split(name_calibr)[1].split('.')[1]
 start=args.start
 delim=str(args.d)
 colname=str(args.cn)
 
-if (args.refPSM is not None) and (os.path.split(name_mzml_calibr)[1].split('.')[0] not in name_psm):
+if (args.refPSM is not None) and (os.path.split(name_calibr)[1].split('.')[0] not in name_psm):
      print ("Warning! File names for angle score calibration don't match")
 
-injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, mz_ms2, angle_x, angle_y, prec_int, psm, x, y, coef = read_data(name_mzml,name_mzml_calibr,name_psm,delim,colname)
+injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, mz_ms2, angle_x, angle_y, prec_int, psm, x, y, coef = read_data(name_mzml,name_calibr,extension,name_psm,delim,colname)
 
 if args.stop is None:
     finish=max(starttime_ms1)
