@@ -47,9 +47,9 @@ Optional parameters
 
 ANGLE SCORE
 
-``-refmzML`` - mzML file for angle score calculation
+``-refFile`` - mzML or mgf file for angle score calculation
 
-``-refPSM`` - csv file with psm identifications for angle score calculation. It should be noted that by default identification proccess is assumed to be strarted from mgf file, if mzML file was used parameter "-f" should be changed to 0
+``-refPSM`` - csv file with psm identifications for angle score calculation (should be based on mzML or mgf file specified in refFile parameter) 
 
 ``-d`` - delimiter in csv file with psm identifications for angle score calculation; tab by default
 
