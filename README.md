@@ -25,7 +25,7 @@ Before use
 ----------
 
 Convert your raw files to mzML format. [MSconvert](<http://proteowizard.sourceforge.net/projects.html>) can be used for this purpose.
-For angle score calculation the list with PSMs is required (by default viQC works with [MPscore](<https://bitbucket.org/markmipt/mp-score>)/[Scavager](<https://bitbucket.org/markmipt/scavager>) results, but it can be changed by optional parameters).
+For the angle score calculation a list with PSMs is required (by default viQC works with [MPscore](<https://bitbucket.org/markmipt/mp-score>)/[Scavager](<https://bitbucket.org/markmipt/scavager>) results, but it can be changed by optional parameters).
 For additional information about angle score see the [article](<https://www.sciencedirect.com/science/article/pii/S138738061730146X>)
 
 How to use
@@ -39,7 +39,7 @@ Optional parameters
 
 ``-o`` - path to save result, by default save in the same folder as an input file
 
-``-start`` - delay time before sample actually comes to mass spec; using for precursor intensity and injection time (MS/MS) calculation; 0 by default
+``-start`` - delay time before sample elution; using for precursor intensity and injection time (MS/MS) calculation; 0 by default
 
 ``-stop`` - time of wash starting; using for precursor intensity and injection time (MS/MS) calculation. By default maximum analysis time
 
