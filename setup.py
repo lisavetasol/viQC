@@ -27,5 +27,5 @@ setup(
                             'Topic :: Software Development :: Libraries'],
     license              = 'License :: OSI Approved :: Apache Software License',
     packages             = find_packages(),
-    entry_points         = {'console_scripts': ['viqc = viqc:main']}
+    entry_points         = {'console_scripts': ['viQC = viqc:main']}
 )

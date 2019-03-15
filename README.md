@@ -31,7 +31,21 @@ For additional information about angle score see the [article](<https://www.scie
 How to use
 ----------
 
-``python viQC.py input_mzML``
+To install viQC, clone the repository and install with `pip` or distutils:
+
+```
+$ hg clone https://bitbucket.org/lisavetasol/viqc
+$ cd viqc
+$ pip install .
+```
+
+To run viQC:
+
+``viQC input_mzML``
+
+For help on parameters:
+
+``viQC --help``
 
 
 Optional parameters
@@ -43,7 +57,7 @@ Optional parameters
 
 ``-stop`` - time of wash starting; using for precursor intensity and injection time (MS/MS) calculation. By default maximum analysis time
 
-``-charge`` - max charge of precursor ions; 4 by default
+``-charge`` - max charge of precursor ions; by default, all charges are considered
 
 ANGLE SCORE
 
