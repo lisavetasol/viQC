@@ -34,7 +34,7 @@ How to use
 To install viQC, clone the repository and install with `pip` or distutils:
 
 ```
-$ hg clone https://bitbucket.org/lisavetasol/viqc
+$ git clone https://bitbucket.org/lisavetasol/viqc
 $ cd viqc
 $ pip install .
 ```
