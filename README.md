@@ -49,7 +49,7 @@ ANGLE SCORE
 
 ``-refFile`` - mzML or mgf file for angle score calculation
 
-``-refPSM`` - csv file with psm identifications for angle score calculation (should be based on mzML or mgf file specified in refFile parameter) 
+``-refPSM`` - csv file with psm identifications for angle score calculation (should be based on mzML or mgf file specified in refFile parameter)
 
 ``-d`` - delimiter in csv file with psm identifications for angle score calculation; tab by default
 
@@ -59,9 +59,7 @@ ANGLE SCORE
 Output
 ------
 The output file has the name "InputFileName_viQC.png" and contains 8 quality metrics based on MS and MS/MS spectra characteristics.
-The program doesn't require identifications that allow fast and unbiasied quality control of instrument performance.
-
-
+The program doesn't require identifications, allowing fast and unbiased control of instrument performance.
 
 
 Questions
