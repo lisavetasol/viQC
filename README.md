@@ -42,7 +42,7 @@ $ pip install .
 or install directly from BitBucket:
 
 ```
-$ pip install git+https://levitsky@bitbucket.org/lisavetasol/viqc.git
+$ pip install git+https://bitbucket.org/lisavetasol/viqc.git
 ```
 
 To run viQC:
