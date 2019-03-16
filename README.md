@@ -39,6 +39,12 @@ $ cd viqc
 $ pip install .
 ```
 
+or install directly from BitBucket:
+
+```
+$ pip install git+https://levitsky@bitbucket.org/lisavetasol/viqc.git
+```
+
 To run viQC:
 
 ``viQC input_mzML``
