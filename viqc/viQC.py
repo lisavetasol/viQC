@@ -14,11 +14,12 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 import os
 import matplotlib.pyplot as plt
 import argparse
+import logging
 
-COLORS = ["#b84c7d","#4d8ac9","#4bc490","#7f63b8",'b','g','#edd630'] + ['k'] * 50
+COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
 
 def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
-    print("reading data")
+    logging.info("Reading data...")
     injtime_ms1 = []
     injtime_ms2 = []
     starttime_ms1 = []
@@ -65,7 +66,7 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
 
     #read_for_angle_calibration
     if name_psm is not None:
-        print ("reading reference files for angle score calculation")
+        logging.info("Reading reference files for angle score calculation...")
         d = {'mgf': mgf.IndexedMGF, 'mzml': mzml.MzML}
         reader = d[extension.lower()]
         f = reader(name_calibration)
@@ -81,10 +82,11 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
                 y.append(y1)
         coef = 10**(len(str(int(np.mean(y))))-1)
         y = np.array(y) / coef
-    print ("reading is finished, calculating metrics")
-    return (injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, mz_ms2, angle_x, angle_y, prec_int, x, y, coef)
+    logging.info("Reading is complete.")
+    return (injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2,
+        mz_ms2, angle_x, angle_y, prec_int, x, y, coef)
 
-def ms1_ms2(starttime_ms1,starttime_ms2,ax):
+def ms1_ms2(starttime_ms1, starttime_ms2, ax):
     width = 0.5
     ms1 = len(starttime_ms1)
     ms2 = len(starttime_ms2)
@@ -93,20 +95,20 @@ def ms1_ms2(starttime_ms1,starttime_ms2,ax):
     ax.bar([1], ms2, width, alpha=1, color=COLORS[1])
     plt.text(1, ms2/2, ms2, ha='center', fontsize=20)
     ax.set_xticks(np.arange(2))
-    xTickMarks = ['MS1','MS2']
+    xtick_marks = ['MS1', 'MS2']
     ax.set_xticks(np.arange(2))
-    xtickNames = ax.set_xticklabels(xTickMarks)
-    plt.setp(xtickNames, rotation=0, fontsize=15)
+    xtick_names = ax.set_xticklabels(xtick_marks)
+    plt.setp(xtick_names, rotation=0, fontsize=15)
     ax.set_title('MS1/MS2')
 
-def aqtime(starttime_ms1,starttime_ms2):
-    starttime_all = sorted([(x,1) for x in starttime_ms1]+[(x,2) for x in starttime_ms2])
+def aqtime(starttime_ms1, starttime_ms2):
+    starttime_all = sorted([(x, 1) for x in starttime_ms1]+[(x, 2) for x in starttime_ms2])
     aqtime_ms1 = []
     aqtime_ms2 = []
     for i, k in enumerate(starttime_all[:-1]):
-        if k[1] == 1 and any([(k[1]-starttime_all[i+1][1])==-1, (k[1]-starttime_all[i+1][1])==0]):
+        if k[1] == 1 and ((k[1]-starttime_all[i+1][1]) == -1) or ((k[1]-starttime_all[i+1][1]) == 0):
             aqtime_ms1.append(starttime_all[i+1][0]-k[0])
-        if k[1] == 2 and any( [(k[1]-starttime_all[i+1][1])==1,(k[1]-starttime_all[i+1][1])==0] ):
+        if k[1] == 2 and ((k[1]-starttime_all[i+1][1]) == 1) or ((k[1]-starttime_all[i+1][1]) == 0):
             aqtime_ms2.append(starttime_all[i+1][0]-k[0])
     pylab.hist(np.array(aqtime_ms1)*60, histtype='step', lw=2, density=True, label='MS1, sum=%.2f min'%sum(aqtime_ms1), color=COLORS[0])
     pylab.hist(np.array(aqtime_ms2)*60, histtype='step', lw=2, density=True, label='MS2, sum=%.2f min'%sum(aqtime_ms2), color=COLORS[1])
@@ -123,24 +125,26 @@ def it_ms1(starttime_ms1, injtime_ms1):
     pylab.title('MS1')
 
 def inten_prec(starttime_ms2, start, finish, prec_int):
-    ind = np.logical_and(np.array(starttime_ms2)>start, np.array(starttime_ms2) < finish)
+    ind = np.logical_and(np.array(starttime_ms2) > start, np.array(starttime_ms2) < finish)
     prec = np.log10(np.array(prec_int))[ind]
-    b = np.percentile(prec,99.9)
-    pylab.hist(prec, bins=np.linspace(0,max(prec),100), color=COLORS[0], alpha=0.5, lw=1, edgecolor='k' )
-    pylab.xlabel("Log10(intensity)",fontsize=15)
-    pylab.xlim(np.percentile(prec,0.1),b)
-    pylab.ylabel("Scans #",fontsize=15)
+    b = np.percentile(prec, 99.9)
+    pylab.hist(prec, bins=np.linspace(0, max(prec), 100), color=COLORS[0], alpha=0.5, lw=1, edgecolor='k')
+    pylab.xlabel("Log10(intensity)", fontsize=15)
+    pylab.xlim(np.percentile(prec, 0.1), b)
+    pylab.ylabel("Scans #", fontsize=15)
     pylab.title('Intensity precursor ions')
 
 def it_ms2(starttime_ms2, start, finish, injtime_ms2):
-    ind = np.logical_and(np.array(starttime_ms2)>start, np.array(starttime_ms2)<finish)
-    pylab.hist(np.array(injtime_ms2)[ind], bins=np.linspace(0,max(injtime_ms2),100), color=COLORS[1], alpha=0.5, lw=1, edgecolor='k')
-    pylab.xlabel("Injection Time,ms",fontsize=15)
-    pylab.ylabel("Scans #",fontsize=15)
+    ind = np.logical_and(np.array(starttime_ms2) > start, np.array(starttime_ms2) < finish)
+    pylab.hist(np.array(injtime_ms2)[ind], bins=np.linspace(0, max(injtime_ms2), 100),
+        color=COLORS[1], alpha=0.5, lw=1, edgecolor='k')
+    pylab.xlabel("Injection Time, ms", fontsize=15)
+    pylab.ylabel("Scans #", fontsize=15)
     pylab.title('MS2_IT')
 
 def realtop(starttime_ms1, indexms1):
-    pylab.scatter(np.array(starttime_ms1)[:-1], np.ediff1d(indexms1)-1, alpha=0.7, s=15, label='TopN', color=COLORS[1])
+    pylab.scatter(np.array(starttime_ms1)[:-1], np.ediff1d(indexms1)-1, alpha=0.7, s=15,
+        label='TopN', color=COLORS[1])
     fit = lowess(np.ediff1d(indexms1)-1, np.array(starttime_ms1)[:-1], frac=0.05, it=0)
     pylab.plot(fit[:,0],fit[:,1], "r-" ,label='Average TopN')
     pylab.ylim(0, max(np.ediff1d(indexms1))+max(np.ediff1d(indexms1))/10)
@@ -178,7 +182,7 @@ def angle_calculation(x, y, angle_x, angle_y, coef):
         dif = []
         for k in zip(x_mod, y_mod):
             dif.append(i * (k[0]-per_1_x) + per_1_y - k[1])
-        under_line=sum(x > 0 for x in dif)
+        under_line = sum(x > 0 for x in dif)
         if float(under_line) / len(x_mod) > 0.01:
             under = i
             break
@@ -188,7 +192,7 @@ def angle_calculation(x, y, angle_x, angle_y, coef):
         dif = []
         for k in zip(x_mod, y_mod):
             dif.append(j * (k[0]-per_1_x) + per_1_y - k[1])
-        above_line=sum(x < 0 for x in dif)
+        above_line = sum(x < 0 for x in dif)
         if float(above_line) / len(x_mod) > 0.01:
             above = j
             break
@@ -206,58 +210,68 @@ def angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef):
     a = np.arange(per_1_x, 1000, 100.)
     b = under * (a-per_1_x) + per_1_y
     pylab.plot(a, b, color='black')
-    c = above*(a-per_1_x)+per_1_y
+    c = above * (a-per_1_x) + per_1_y
     pylab.plot(a, c, color='black')
-    pylab.scatter(angle_x,angle_y_mod, alpha=0.5, color=COLORS[1], label='score=%.2f' % per)
+    pylab.scatter(angle_x, angle_y_mod, alpha=0.5, color=COLORS[1], label='score=%.2f' % per)
     pylab.xlim(0, np.percentile(angle_x, 99.5))
     pylab.ylim(0, np.percentile(angle_y_mod, 99.5))
     pylab.xlabel('#peaks', fontsize=15)
     pylab.legend(fontsize=15, loc=1)
-    pylab.ylabel('avg intensity, 10^%i'%np.log10(coef),fontsize=15)
+    pylab.ylabel('avg intensity, 10^%i'%np.log10(coef), fontsize=15)
 
 def inten_number_peaks_ms1(angle_x, angle_y):
     coef = 10**(len(str(int(np.mean(angle_y))))-1)
     angle_y_mod = np.array(angle_y) / coef
-    pylab.scatter(angle_x,angle_y_mod, alpha=0.5, color=COLORS[1])
+    pylab.scatter(angle_x, angle_y_mod, alpha=0.5, color=COLORS[1])
     pylab.xlim(0, np.percentile(angle_x, 99.5))
     pylab.ylim(0, np.percentile(angle_y_mod, 99.5))
-    pylab.xlabel('#peaks', fontsize=15)
+    pylab.xlabel('# peaks', fontsize=15)
     pylab.ylabel('avg intensity, 10^%i'%np.log10(coef), fontsize=15)
     pylab.title('MS/MS', fontsize=15)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input', help='mzML file with path')
-    parser.add_argument('-o', '--output', help='path to save result, by default save in the folder of the input file')
-    parser.add_argument('-refPSM', nargs='?', help='csv file with psm identifications for angle score calculating')
-    parser.add_argument('-refFile', nargs='?', help='mgf or mzML file for angle score calculating')
+    parser.add_argument('-o', '--output',
+        help='path to save result, by default save in the folder of the input file')
+    parser.add_argument('-refPSM', nargs='?',
+        help='CSV file with PSM identifications for angle score calculation')
+    parser.add_argument('-refFile', nargs='?',
+        help='MGF or mzML file for angle score calculation')
     parser.add_argument('-d', nargs='?',
-        help='delimiter in csv file with psm identifications for angle score calculating; tab by default', default='\t')
+        help='delimiter in CSV file with PSM identifications for angle score calculation; '
+        'tab by default', default='\t')
     parser.add_argument('-cn', nargs='?',
-        help='column name with spectra names in csv file with psm identifications for angle score calculating; "spectrum" by default',
+        help='column name with spectrum titles in CSV file with PSM identifications '
+        'for angle score calculation; "spectrum" by default',
         default='spectrum')
     parser.add_argument('-start', nargs='?', type=float,
-        help='delay time before sample actually comes to mass spec; using for precursor intensity and injection time (MS/MS) calculation; 0 by default',
+        help='delay time before sample actually comes to mass spec; '
+        'used for precursor intensity and injection time (MS/MS) calculation; 0 by default',
         default=0)
     parser.add_argument('-stop', nargs='?', type=float,
-        help='time of wash starting; using for precursor intensity and injection time (MS/MS) calculation. By default maximum analysis time')
+        help='time of wash start; used for precursor intensity and '
+        'injection time (MS/MS) calculation. By default, maximum analysis time')
     parser.add_argument('-charge', nargs='?', type=int,
         help='max charge of precursor ions. By default, all charges are considered')
     args = parser.parse_args()
 
+    logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
+            datefmt='[%H:%M:%S]', level=logging.INFO)
+
     if os.path.exists(args.input):
         name_mzml = args.input
     else:
-        print("Could not find the input file %s" % args.input)
+        logging.error("Could not find the input file %s", args.input)
         sys.exit(1)
 
     if args.output is None:
-          output = os.path.split(name_mzml)[0]
+        output = os.path.split(name_mzml)[0]
     else:
-          output = args.output
+        output = args.output
 
-    if args.refPSM is None or args.refFile is None:
-        print ("No files for angle score calculation provided, running without them")
+    if (args.refPSM is None) + (args.refFile is None) == 1:
+        logging.error("Not enough files for angle score calculation provided, skipping angle score.")
 
     name = os.path.split(name_mzml)[1].split('.')[0]
     name_psm = args.refPSM
@@ -268,10 +282,11 @@ def main():
     colname = str(args.cn)
 
     if (args.refPSM is not None) and (os.path.split(name_calibr)[1].split('.')[0] not in name_psm):
-         print ("Warning! File names for angle score calibration don't match")
+        logging.warning("File names for angle score calibration don't match!")
 
-    injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, mz_ms2, angle_x, angle_y, prec_int, x, y, coef = read_data(
-        name_mzml, name_calibr, extension, name_psm, delim, colname)
+    injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, \
+        mz_ms2, angle_x, angle_y, prec_int, x, y, coef = read_data(
+            name_mzml, name_calibr, extension, name_psm, delim, colname)
 
     if args.stop is None:
         finish = max(starttime_ms1)
@@ -280,47 +295,45 @@ def main():
 
     if args.charge is None:
         maxcharge = max(charge_ms2)
-        print('Maximum charge in file:', maxcharge)
+        logging.info('Maximum charge in file: %s', maxcharge)
     else:
         maxcharge = args.charge
 
-    #for pretty pictures
+    # for pretty pictures
     plt.style.use('seaborn-whitegrid')
     plt.rcParams['ytick.labelsize'] = 15
     plt.rcParams['xtick.labelsize'] = 15
-    plt.rcParams['axes.titlesize'] = 15
-    plt.rcParams['axes.titlesize']=15
+    plt.rcParams['axes.titlesize']  = 15
+    plt.rcParams['axes.titlesize']  = 15
 
-    #build pictures
-
-    pylab.figure(figsize=(15,40))
+    pylab.figure(figsize=(15, 40))
     ax1 = plt.subplot2grid((6, 2), (0, 0))
-    ms1_ms2(starttime_ms1,starttime_ms2,ax1)
+    ms1_ms2(starttime_ms1, starttime_ms2, ax1)
     ax2 = plt.subplot2grid((6, 2), (0, 1))
-    aqtime(starttime_ms1,starttime_ms2)
+    aqtime(starttime_ms1, starttime_ms2)
     ax3 = plt.subplot2grid((6, 2), (1, 0), colspan=2)
-    it_ms1(starttime_ms1,injtime_ms1)
+    it_ms1(starttime_ms1, injtime_ms1)
     ax4 = plt.subplot2grid((6, 2), (2, 0), colspan=2)
-    inten_prec(starttime_ms2,start,finish,prec_int)
+    inten_prec(starttime_ms2, start, finish, prec_int)
     ax5 = plt.subplot2grid((6, 2), (3, 0), colspan=2)
     it_ms2(starttime_ms2,start,finish,injtime_ms2)
     ax6 = plt.subplot2grid((6, 2), (4, 0), colspan=2)
-    charge(maxcharge,charge_ms2,starttime_ms2,mz_ms2)
+    charge(maxcharge,charge_ms2,starttime_ms2, mz_ms2)
     ax7 = plt.subplot2grid((6, 2), (5, 0))
     realtop(starttime_ms1,indexms1)
     if name_psm is not None:
-        under,above,per_1_x,per_1_y,per,angle_y_mod,coef=angle_calculation(x, y, angle_x, angle_y, coef)
+        under, above, per_1_x, per_1_y, per, angle_y_mod, coef = angle_calculation(x, y, angle_x, angle_y, coef)
         ax8 = plt.subplot2grid((6, 2), (5, 1))
-        angle (under,above,per_1_x,per_1_y,per,angle_x,angle_y_mod,coef)
+        angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef)
     else:
         ax8 = plt.subplot2grid((6, 2), (5, 1))
-        inten_number_peaks_ms1(angle_x,angle_y)
-    print ("saving results")
+        inten_number_peaks_ms1(angle_x, angle_y)
+    logging.info("Saving results...")
 
     outname = os.path.join(output, name + '_viQC.png')
     pylab.savefig(outname)
-    print('Output figure saved to', outname)
-    print ('enjoy your QC')
+    logging.info('Output figure saved to %s', outname)
+    logging.info('Enjoy your QC!')
 
 if __name__ == '__main__':
     main()
