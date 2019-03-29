@@ -2,7 +2,6 @@ from __future__ import print_function
 import matplotlib
 matplotlib.use('agg')
 import csv
-import sys
 import pylab
 from pyteomics import mzml, mgf
 try:
@@ -14,6 +13,7 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 import os
 import argparse
 import logging
+from collections import Counter
 
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
 
@@ -298,6 +298,18 @@ def process_file(name_mzml, args):
     logging.info('Output figure saved to %s', outname)
 
 
+class StatsHandler(logging.Handler):
+    # inspired by https://stackoverflow.com/a/31142078/1258041
+
+    def __init__(self, *args, **kwargs):
+        super(StatsHandler, self).__init__(*args, **kwargs)
+        self.level2count = Counter()
+
+    def emit(self, record):
+        l = record.levelno
+        self.level2count[l] += 1
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input', nargs='+', help='mzML file with path(s)')
@@ -329,12 +341,15 @@ def main():
 
     logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
             datefmt='[%H:%M:%S]', level=logging.INFO, filename=args.logname)
+    stats = StatsHandler()
+    logging.getLogger().addHandler(stats)
 
     for infile in args.input:
         if os.path.exists(infile):
             process_file(infile, args)
         else:
             logging.error("Could not find the input file %s", infile)
+    logging.info('There were %s error(s), %s warning(s).', stats.level2count[logging.ERROR], stats.level2count[logging.WARNING])
     logging.info('Enjoy your QC!')
 
 
