@@ -229,44 +229,7 @@ def inten_number_peaks_ms1(angle_x, angle_y):
     pylab.ylabel('avg intensity, 10^%i'%np.log10(coef), fontsize=15)
     pylab.title('MS/MS', fontsize=15)
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='mzML file with path')
-    parser.add_argument('-o', '--output',
-        help='path to save result, by default save in the folder of the input file')
-    parser.add_argument('-refPSM',
-        help='CSV file with PSM identifications for angle score calculation')
-    parser.add_argument('-refFile',
-        help='MGF or mzML file for angle score calculation')
-    parser.add_argument('-d',
-        help='delimiter in CSV file with PSM identifications for angle score calculation; '
-        'tab by default', default='\t')
-    parser.add_argument('-cn',
-        help='column name with spectrum titles in CSV file with PSM identifications '
-        'for angle score calculation; "spectrum" by default',
-        default='spectrum')
-    parser.add_argument('-start', type=float,
-        help='delay time before sample actually comes to mass spec; '
-        'used for precursor intensity and injection time (MS/MS) calculation; 0 by default',
-        default=0)
-    parser.add_argument('-stop', type=float,
-        help='time of wash start; used for precursor intensity and '
-        'injection time (MS/MS) calculation. By default, maximum analysis time')
-    parser.add_argument('-charge', type=int,
-        help='max charge of precursor ions. By default, all charges are considered')
-    parser.add_argument('-log', '--logname',
-        help='log file name. By default, log to stdout')
-    args = parser.parse_args()
-
-    logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
-            datefmt='[%H:%M:%S]', level=logging.INFO, filename=args.logname)
-
-    if os.path.exists(args.input):
-        name_mzml = args.input
-    else:
-        logging.error("Could not find the input file %s", args.input)
-        sys.exit(1)
-
+def process_file(name_mzml, args):
     if args.output is None:
         output = os.path.split(name_mzml)[0]
     else:
@@ -336,6 +299,48 @@ def main():
     pylab.savefig(outname)
     logging.info('Output figure saved to %s', outname)
     logging.info('Enjoy your QC!')
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', help='mzML file with path')
+    parser.add_argument('-o', '--output',
+        help='path to save result, by default save in the folder of the input file')
+    parser.add_argument('-refPSM',
+        help='CSV file with PSM identifications for angle score calculation')
+    parser.add_argument('-refFile',
+        help='MGF or mzML file for angle score calculation')
+    parser.add_argument('-d',
+        help='delimiter in CSV file with PSM identifications for angle score calculation; '
+        'tab by default', default='\t')
+    parser.add_argument('-cn',
+        help='column name with spectrum titles in CSV file with PSM identifications '
+        'for angle score calculation; "spectrum" by default',
+        default='spectrum')
+    parser.add_argument('-start', type=float,
+        help='delay time before sample actually comes to mass spec; '
+        'used for precursor intensity and injection time (MS/MS) calculation; 0 by default',
+        default=0)
+    parser.add_argument('-stop', type=float,
+        help='time of wash start; used for precursor intensity and '
+        'injection time (MS/MS) calculation. By default, maximum analysis time')
+    parser.add_argument('-charge', type=int,
+        help='max charge of precursor ions. By default, all charges are considered')
+    parser.add_argument('-log', '--logname',
+        help='log file name. By default, log to stdout')
+    args = parser.parse_args()
+
+    logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
+            datefmt='[%H:%M:%S]', level=logging.INFO, filename=args.logname)
+
+    if os.path.exists(args.input):
+        name_mzml = args.input
+    else:
+        logging.error("Could not find the input file %s", args.input)
+        sys.exit(1)
+
+    return process_file(name_mzml, args)
+
 
 if __name__ == '__main__':
     main()
