@@ -296,12 +296,11 @@ def process_file(name_mzml, args):
     outname = os.path.join(output, name + '_viQC.png')
     pylab.savefig(outname)
     logging.info('Output figure saved to %s', outname)
-    logging.info('Enjoy your QC!')
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='mzML file with path')
+    parser.add_argument('input', nargs='+', help='mzML file with path(s)')
     parser.add_argument('-o', '--output',
         help='path to save result, by default save in the folder of the input file')
     parser.add_argument('-refPSM',
@@ -331,13 +330,12 @@ def main():
     logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
             datefmt='[%H:%M:%S]', level=logging.INFO, filename=args.logname)
 
-    if os.path.exists(args.input):
-        name_mzml = args.input
-    else:
-        logging.error("Could not find the input file %s", args.input)
-        sys.exit(1)
-
-    return process_file(name_mzml, args)
+    for infile in args.input:
+        if os.path.exists(infile):
+            process_file(infile, args)
+        else:
+            logging.error("Could not find the input file %s", infile)
+    logging.info('Enjoy your QC!')
 
 
 if __name__ == '__main__':
