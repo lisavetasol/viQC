@@ -85,20 +85,19 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
     return (injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2,
         mz_ms2, angle_x, angle_y, prec_int, x, y, coef)
 
-def ms1_ms2(starttime_ms1, starttime_ms2, ax):
+def ms1_ms2(starttime_ms1, starttime_ms2):
     width = 0.5
     ms1 = len(starttime_ms1)
     ms2 = len(starttime_ms2)
-    ax.bar([0], ms1, width, alpha=1, color=COLORS[0])
+    pylab.bar([0], ms1, width, alpha=1, color=COLORS[0])
     pylab.text(0, ms1/2, ms1, ha='center', fontsize=20)
-    ax.bar([1], ms2, width, alpha=1, color=COLORS[1])
+    pylab.bar([1], ms2, width, alpha=1, color=COLORS[1])
     pylab.text(1, ms2/2, ms2, ha='center', fontsize=20)
-    ax.set_xticks(np.arange(2))
+    pylab.xticks(np.arange(2))
     xtick_marks = ['MS1', 'MS2']
-    ax.set_xticks(np.arange(2))
-    xtick_names = ax.set_xticklabels(xtick_marks)
+    _, xtick_names = pylab.xticks(np.arange(2), xtick_marks)
     pylab.setp(xtick_names, rotation=0, fontsize=15)
-    ax.set_title('MS1/MS2')
+    pylab.title('MS1/MS2')
 
 def aqtime(starttime_ms1, starttime_ms2):
     starttime_all = sorted([(x, 1) for x in starttime_ms1]+[(x, 2) for x in starttime_ms2])
@@ -271,26 +270,26 @@ def process_file(name_mzml, args):
     pylab.rcParams['axes.titlesize']  = 15
 
     pylab.figure(figsize=(15, 40))
-    ax1 = pylab.subplot2grid((6, 2), (0, 0))
-    ms1_ms2(starttime_ms1, starttime_ms2, ax1)
-    ax2 = pylab.subplot2grid((6, 2), (0, 1))
+    pylab.subplot2grid((6, 2), (0, 0))
+    ms1_ms2(starttime_ms1, starttime_ms2)
+    pylab.subplot2grid((6, 2), (0, 1))
     aqtime(starttime_ms1, starttime_ms2)
-    ax3 = pylab.subplot2grid((6, 2), (1, 0), colspan=2)
+    pylab.subplot2grid((6, 2), (1, 0), colspan=2)
     it_ms1(starttime_ms1, injtime_ms1)
-    ax4 = pylab.subplot2grid((6, 2), (2, 0), colspan=2)
+    pylab.subplot2grid((6, 2), (2, 0), colspan=2)
     inten_prec(starttime_ms2, start, finish, prec_int)
-    ax5 = pylab.subplot2grid((6, 2), (3, 0), colspan=2)
+    pylab.subplot2grid((6, 2), (3, 0), colspan=2)
     it_ms2(starttime_ms2,start,finish,injtime_ms2)
-    ax6 = pylab.subplot2grid((6, 2), (4, 0), colspan=2)
+    pylab.subplot2grid((6, 2), (4, 0), colspan=2)
     charge(maxcharge,charge_ms2,starttime_ms2, mz_ms2)
-    ax7 = pylab.subplot2grid((6, 2), (5, 0))
+    pylab.subplot2grid((6, 2), (5, 0))
     realtop(starttime_ms1,indexms1)
     if name_psm is not None:
         under, above, per_1_x, per_1_y, per, angle_y_mod, coef = angle_calculation(x, y, angle_x, angle_y, coef)
-        ax8 = pylab.subplot2grid((6, 2), (5, 1))
+        pylab.subplot2grid((6, 2), (5, 1))
         angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef)
     else:
-        ax8 = pylab.subplot2grid((6, 2), (5, 1))
+        pylab.subplot2grid((6, 2), (5, 1))
         inten_number_peaks_ms1(angle_x, angle_y)
     logging.info("Saving results...")
 
