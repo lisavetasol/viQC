@@ -18,7 +18,7 @@ from collections import Counter
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
 
 def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
-    logging.info("Reading data...")
+    logging.info('Reading data...')
     injtime_ms1 = []
     injtime_ms2 = []
     starttime_ms1 = []
@@ -87,6 +87,19 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
             mz_ms2.append(mz)
             charge_ms2.append(charge)
 
+    def convert_times(arr):
+        if arr:
+            uinfo = arr[0].unit_info
+            arr = np.array(arr)
+            if uinfo == 'second':
+                arr /= 60.
+            elif uinfo != 'minute':
+                logging.warning('Unexpected unit: %s', uinfo)
+            return arr
+
+    starttime_ms1 = convert_times(starttime_ms1)
+    starttime_ms2 = convert_times(starttime_ms2)
+
     coef = 10**(len(str(int(np.mean(angle_y))))-1)
 
     #read_for_angle_calibration
@@ -114,12 +127,12 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
         mz_ms2, angle_x, angle_y, prec_int, x, y, coef)
 
 def ms1_ms2(starttime_ms1, starttime_ms2):
-    if not starttime_ms1 or not starttime_ms2:
+    if starttime_ms1 is None or starttime_ms2 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
     width = 0.5
-    ms1 = len(starttime_ms1)
-    ms2 = len(starttime_ms2)
+    ms1 = starttime_ms1.size
+    ms2 = starttime_ms2.size
     pylab.bar([0], ms1, width, alpha=1, color=COLORS[0])
     pylab.text(0, ms1/2, ms1, ha='center', fontsize=20)
     pylab.bar([1], ms2, width, alpha=1, color=COLORS[1])
@@ -131,7 +144,7 @@ def ms1_ms2(starttime_ms1, starttime_ms2):
     pylab.title('MS1/MS2')
 
 def aqtime(starttime_ms1, starttime_ms2):
-    if not starttime_ms1 or not starttime_ms2:
+    if starttime_ms1 is None or starttime_ms2 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
     starttime_all = sorted([(x, 1) for x in starttime_ms1]+[(x, 2) for x in starttime_ms2])
@@ -150,23 +163,23 @@ def aqtime(starttime_ms1, starttime_ms2):
     pylab.title('Acquisition time')
 
 def it_ms1(starttime_ms1, injtime_ms1):
-    if not starttime_ms1:
+    if starttime_ms1 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
-    if not injtime_ms1:
+    if injtime_ms1 is None:
         pylab.text(0.5, 0.5, 'Injection time information missing', ha='center')
         return
     pylab.scatter(starttime_ms1, injtime_ms1, s=10, alpha=0.7, color=COLORS[0])
     pylab.legend(markerscale=2)
     pylab.xlabel("Start Time, min", fontsize=15)
-    pylab.ylabel("Injection Time,ms", fontsize=15)
+    pylab.ylabel("Injection Time, ms", fontsize=15)
     pylab.title('MS1')
 
 def inten_prec(starttime_ms2, start, finish, prec_int):
-    if not starttime_ms2:
+    if starttime_ms2 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
-    ind = np.logical_and(np.array(starttime_ms2) > start, np.array(starttime_ms2) < finish)
+    ind = np.logical_and(starttime_ms2 > start, starttime_ms2 < finish)
     prec = np.log10(np.array(prec_int))[ind]
     b = np.percentile(prec, 99.9)
     pylab.hist(prec, bins=np.linspace(0, max(prec), 100), color=COLORS[0], alpha=0.5, lw=1, edgecolor='k')
@@ -176,13 +189,13 @@ def inten_prec(starttime_ms2, start, finish, prec_int):
     pylab.title('Intensity precursor ions')
 
 def it_ms2(starttime_ms2, start, finish, injtime_ms2):
-    if not starttime_ms2:
+    if starttime_ms2 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
-    if not injtime_ms2:
+    if injtime_ms2 is None:
         pylab.text(0.5, 0.5, 'Injection time information missing', ha='center')
         return
-    ind = np.logical_and(np.array(starttime_ms2) > start, np.array(starttime_ms2) < finish)
+    ind = np.logical_and(starttime_ms2 > start, starttime_ms2 < finish)
     pylab.hist(np.array(injtime_ms2)[ind], bins=np.linspace(0, max(injtime_ms2), 100),
         color=COLORS[1], alpha=0.5, lw=1, edgecolor='k')
     pylab.xlabel("Injection Time, ms", fontsize=15)
@@ -190,22 +203,22 @@ def it_ms2(starttime_ms2, start, finish, injtime_ms2):
     pylab.title('MS2_IT')
 
 def realtop(starttime_ms1, indexms1):
-    if not starttime_ms1:
+    if starttime_ms1 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
-    pylab.scatter(np.array(starttime_ms1)[:-1], np.ediff1d(indexms1)-1, alpha=0.7, s=15,
+    pylab.scatter(starttime_ms1[:-1], np.ediff1d(indexms1)-1, alpha=0.7, s=15,
         label='TopN', color=COLORS[1])
-    fit = lowess(np.ediff1d(indexms1)-1, np.array(starttime_ms1)[:-1], frac=0.05, it=0)
+    fit = lowess(np.ediff1d(indexms1)-1, starttime_ms1[:-1], frac=0.05, it=0)
     pylab.plot(fit[:,0],fit[:,1], "r-" ,label='Average TopN')
-    pylab.ylim(0, max(np.ediff1d(indexms1))+max(np.ediff1d(indexms1))/10)
-    pylab.xlim(0, max(starttime_ms1)+max(starttime_ms1)/15)
+    pylab.ylim(0, max(np.ediff1d(indexms1)) * 1.1)
+    pylab.xlim(0, starttime_ms1.max() * 1.07)
     pylab.legend(loc=1,markerscale=2,fontsize=15)
     pylab.xlabel('RT, min',fontsize=15)
     pylab.ylabel('TopN',fontsize=15)
     pylab.title('Real_TopN',fontsize=15)
 
 def charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2):
-    if not starttime_ms2:
+    if starttime_ms2 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
     for i in range(0, maxcharge+1):
@@ -217,7 +230,7 @@ def charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2):
             s=20, alpha=0.5, color=COLORS[i-1], label='charge_%s+(%i scans)'%(i, len(np.array(mz_ms2)[msk])))
         pylab.title('Precursor ions', fontsize=15)
         pylab.legend(markerscale=1.5, fontsize=15)
-        pylab.xlabel('RT,min', fontsize=15)
+        pylab.xlabel('RT, min', fontsize=15)
         pylab.ylabel('m/z', fontsize=15)
 
 def angle_calculation(x, y, angle_x, angle_y, coef):
@@ -307,7 +320,7 @@ def process_file(name_mzml, args):
             name_mzml, name_calibr, extension, name_psm, delim, colname)
 
     if args.stop is None:
-        finish = max(starttime_ms1) if starttime_ms1 else None
+        finish = starttime_ms1.max() if starttime_ms1 is not None else None
     else:
         finish = args.stop
 
