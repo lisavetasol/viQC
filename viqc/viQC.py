@@ -31,33 +31,59 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
     prec_int = []
     x = []
     y = []
-    a = 0
+    errors = set()
+
     for sc in mzml.read(name_mzml):
-        if sc['ms level'] == 1:
-            injtime_ms1.append(float(sc['scanList']['scan'][0]['ion injection time']))
-            starttime_ms1.append(float(sc['scanList']['scan'][0]['scan start time']))
-            indexms1.append(int(sc['id'].split(" ")[2].split('=')[1]))
-        if sc['ms level'] == 2:
-            it_ms2 = float(sc['scanList']['scan'][0]['ion injection time'])
-            st_ms2 = float(sc['scanList']['scan'][0]['scan start time'])
+        if 'injection time' not in errors:
             try:
-                charge = int(sc["precursorList"]['precursor'][0]['selectedIonList']['selectedIon'][0]['charge state'])
+                injtime = sc['scanList']['scan'][0]['ion injection time']
+            except KeyError:
+                errors.add('injection time')
+                injtime_ms1 = None
+                injtime_ms2 = None
+        if 'start time' not in errors:
+            try:
+                starttime = sc['scanList']['scan'][0]['scan start time']
+            except KeyError:
+                errors.add('start time')
+                starttime_ms1 = None
+                starttime_ms2 = None
+        if sc['ms level'] == 1:
+            try:
+                injtime_ms1.append(injtime)
+            except AttributeError:
+                pass
+            try:
+                starttime_ms1.append(starttime)
+            except AttributeError:
+                pass
+            indexms1.append(int(sc['id'].split(' ')[2].split('=')[1]))
+        if sc['ms level'] == 2:
+            try:
+                injtime_ms2.append(injtime)
+            except AttributeError:
+                pass
+            try:
+                starttime_ms2.append(starttime)
+            except AttributeError:
+                pass
+            try:
+                charge = int(sc['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['charge state'])
             except (KeyError, ValueError):
                 charge = 0
-            mz = sc["precursorList"]['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']
+                errors.add('charge')
+            mz = sc['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['selected ion m/z']
             try:
-                prec_intensity = sc["precursorList"]['precursor'][0]['selectedIonList']['selectedIon'][0]['peak intensity']
+                prec_intensity = sc['precursorList']['precursor'][0]['selectedIonList']['selectedIon'][0]['peak intensity']
             except (KeyError, ValueError):
-                a += 1
+                errors.add('peak intensity')
             if sc['intensity array'].size:
                 intensity = sc['intensity array'].sum(dtype=float) / sc['intensity array'].size
             else:
                 intensity = 0
             prec_int.append(prec_intensity)
-            injtime_ms2.append(it_ms2)
             angle_y.append(intensity)
             angle_x.append(len(sc['intensity array']))
-            starttime_ms2.append(st_ms2)
             mz_ms2.append(mz)
             charge_ms2.append(charge)
 
@@ -65,7 +91,7 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
 
     #read_for_angle_calibration
     if name_psm is not None:
-        logging.info("Reading reference files for angle score calculation...")
+        logging.info('Reading reference files for angle score calculation...')
         d = {'mgf': mgf.IndexedMGF, 'mzml': mzml.MzML}
         reader = d[extension.lower()]
         f = reader(name_calibration)
@@ -75,17 +101,22 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
             for row in reader:
                 psm = row[colname].split(' RTINSECONDS')[0]
                 sc = f[psm]
-                x1 = len(sc["m/z array"])
+                x1 = len(sc['m/z array'])
                 x.append(x1)
                 y1 = sc['intensity array'].sum(dtype=float) / sc['intensity array'].size
                 y.append(y1)
         coef = 10**(len(str(int(np.mean(y))))-1)
         y = np.array(y) / coef
-    logging.info("Reading is complete.")
+    logging.info('Reading is complete.')
+    for error in errors:
+        logging.warning('There was an error extracting %s information. Some figures will not be produced.', error)
     return (injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2,
         mz_ms2, angle_x, angle_y, prec_int, x, y, coef)
 
 def ms1_ms2(starttime_ms1, starttime_ms2):
+    if not starttime_ms1 or not starttime_ms2:
+        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        return
     width = 0.5
     ms1 = len(starttime_ms1)
     ms2 = len(starttime_ms2)
@@ -100,6 +131,9 @@ def ms1_ms2(starttime_ms1, starttime_ms2):
     pylab.title('MS1/MS2')
 
 def aqtime(starttime_ms1, starttime_ms2):
+    if not starttime_ms1 or not starttime_ms2:
+        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        return
     starttime_all = sorted([(x, 1) for x in starttime_ms1]+[(x, 2) for x in starttime_ms2])
     aqtime_ms1 = []
     aqtime_ms2 = []
@@ -116,6 +150,12 @@ def aqtime(starttime_ms1, starttime_ms2):
     pylab.title('Acquisition time')
 
 def it_ms1(starttime_ms1, injtime_ms1):
+    if not starttime_ms1:
+        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        return
+    if not injtime_ms1:
+        pylab.text(0.5, 0.5, 'Injection time information missing', ha='center')
+        return
     pylab.scatter(starttime_ms1, injtime_ms1, s=10, alpha=0.7, color=COLORS[0])
     pylab.legend(markerscale=2)
     pylab.xlabel("Start Time, min", fontsize=15)
@@ -123,6 +163,9 @@ def it_ms1(starttime_ms1, injtime_ms1):
     pylab.title('MS1')
 
 def inten_prec(starttime_ms2, start, finish, prec_int):
+    if not starttime_ms2:
+        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        return
     ind = np.logical_and(np.array(starttime_ms2) > start, np.array(starttime_ms2) < finish)
     prec = np.log10(np.array(prec_int))[ind]
     b = np.percentile(prec, 99.9)
@@ -133,6 +176,12 @@ def inten_prec(starttime_ms2, start, finish, prec_int):
     pylab.title('Intensity precursor ions')
 
 def it_ms2(starttime_ms2, start, finish, injtime_ms2):
+    if not starttime_ms2:
+        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        return
+    if not injtime_ms2:
+        pylab.text(0.5, 0.5, 'Injection time information missing', ha='center')
+        return
     ind = np.logical_and(np.array(starttime_ms2) > start, np.array(starttime_ms2) < finish)
     pylab.hist(np.array(injtime_ms2)[ind], bins=np.linspace(0, max(injtime_ms2), 100),
         color=COLORS[1], alpha=0.5, lw=1, edgecolor='k')
@@ -141,6 +190,9 @@ def it_ms2(starttime_ms2, start, finish, injtime_ms2):
     pylab.title('MS2_IT')
 
 def realtop(starttime_ms1, indexms1):
+    if not starttime_ms1:
+        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        return
     pylab.scatter(np.array(starttime_ms1)[:-1], np.ediff1d(indexms1)-1, alpha=0.7, s=15,
         label='TopN', color=COLORS[1])
     fit = lowess(np.ediff1d(indexms1)-1, np.array(starttime_ms1)[:-1], frac=0.05, it=0)
@@ -153,6 +205,9 @@ def realtop(starttime_ms1, indexms1):
     pylab.title('Real_TopN',fontsize=15)
 
 def charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2):
+    if not starttime_ms2:
+        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        return
     for i in range(0, maxcharge+1):
         charge_ms2 = np.array(charge_ms2)
         starttime_ms2 = np.array(starttime_ms2)
@@ -224,7 +279,7 @@ def inten_number_peaks_ms1(angle_x, angle_y):
     pylab.xlim(0, np.percentile(angle_x, 99.5))
     pylab.ylim(0, np.percentile(angle_y_mod, 99.5))
     pylab.xlabel('# peaks', fontsize=15)
-    pylab.ylabel('avg intensity, 10^%i'%np.log10(coef), fontsize=15)
+    pylab.ylabel('avg intensity, 10^%i' % np.log10(coef), fontsize=15)
     pylab.title('MS/MS', fontsize=15)
 
 def process_file(name_mzml, args):
@@ -234,7 +289,7 @@ def process_file(name_mzml, args):
         output = args.output
 
     if (args.refPSM is None) + (args.refFile is None) == 1:
-        logging.error("Not enough files for angle score calculation provided, skipping angle score.")
+        logging.error('Not enough files for angle score calculation provided, skipping angle score.')
 
     name = os.path.split(name_mzml)[1].split('.')[0]
     name_psm = args.refPSM
@@ -245,14 +300,14 @@ def process_file(name_mzml, args):
     colname = str(args.cn)
 
     if (args.refPSM is not None) and (os.path.split(name_calibr)[1].split('.')[0] not in name_psm):
-        logging.warning("File names for angle score calibration don't match!")
+        logging.warning('File names for angle score calibration don\'t match!')
 
     injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, \
         mz_ms2, angle_x, angle_y, prec_int, x, y, coef = read_data(
             name_mzml, name_calibr, extension, name_psm, delim, colname)
 
     if args.stop is None:
-        finish = max(starttime_ms1)
+        finish = max(starttime_ms1) if starttime_ms1 else None
     else:
         finish = args.stop
 
@@ -268,6 +323,7 @@ def process_file(name_mzml, args):
     pylab.rcParams['xtick.labelsize'] = 15
     pylab.rcParams['axes.titlesize']  = 15
     pylab.rcParams['axes.titlesize']  = 15
+    pylab.rcParams['font.size']  = 15
 
     pylab.figure(figsize=(15, 40))
     pylab.subplot2grid((6, 2), (0, 0))
@@ -279,11 +335,11 @@ def process_file(name_mzml, args):
     pylab.subplot2grid((6, 2), (2, 0), colspan=2)
     inten_prec(starttime_ms2, start, finish, prec_int)
     pylab.subplot2grid((6, 2), (3, 0), colspan=2)
-    it_ms2(starttime_ms2,start,finish,injtime_ms2)
+    it_ms2(starttime_ms2, start, finish, injtime_ms2)
     pylab.subplot2grid((6, 2), (4, 0), colspan=2)
-    charge(maxcharge,charge_ms2,starttime_ms2, mz_ms2)
+    charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2)
     pylab.subplot2grid((6, 2), (5, 0))
-    realtop(starttime_ms1,indexms1)
+    realtop(starttime_ms1, indexms1)
     if name_psm is not None:
         under, above, per_1_x, per_1_y, per, angle_y_mod, coef = angle_calculation(x, y, angle_x, angle_y, coef)
         pylab.subplot2grid((6, 2), (5, 1))
