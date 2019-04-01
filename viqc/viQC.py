@@ -159,7 +159,7 @@ def aqtime(starttime_ms1, starttime_ms2):
     pylab.hist(np.array(aqtime_ms2)*60, histtype='step', lw=2, density=True, label='MS2, sum=%.2f min'%sum(aqtime_ms2), color=COLORS[1])
     pylab.legend(loc=1, fontsize=12)
     pylab.xlabel("AT, sec", fontsize=15)
-    pylab.ylabel("# spectra, normalized", fontsize=15)
+    pylab.ylabel("# of spectra, normalized", fontsize=15)
     pylab.title('Acquisition time')
 
 def it_ms1(starttime_ms1, injtime_ms1):
@@ -171,8 +171,8 @@ def it_ms1(starttime_ms1, injtime_ms1):
         return
     pylab.scatter(starttime_ms1, injtime_ms1, s=10, alpha=0.7, color=COLORS[0])
     pylab.legend(markerscale=2)
-    pylab.xlabel("Start Time, min", fontsize=15)
-    pylab.ylabel("Injection Time, ms", fontsize=15)
+    pylab.xlabel("Start time, min", fontsize=15)
+    pylab.ylabel("Injection time, ms", fontsize=15)
     pylab.title('MS1')
 
 def inten_prec(starttime_ms2, start, finish, prec_int):
@@ -185,8 +185,8 @@ def inten_prec(starttime_ms2, start, finish, prec_int):
     pylab.hist(prec, bins=np.linspace(0, max(prec), 100), color=COLORS[0], alpha=0.5, lw=1, edgecolor='k')
     pylab.xlabel("Log10(intensity)", fontsize=15)
     pylab.xlim(np.percentile(prec, 0.1), b)
-    pylab.ylabel("Scans #", fontsize=15)
-    pylab.title('Intensity precursor ions')
+    pylab.ylabel("# of spectra", fontsize=15)
+    pylab.title('Intensity of precursor ions')
 
 def it_ms2(starttime_ms2, start, finish, injtime_ms2):
     if starttime_ms2 is None:
@@ -198,9 +198,9 @@ def it_ms2(starttime_ms2, start, finish, injtime_ms2):
     ind = np.logical_and(starttime_ms2 > start, starttime_ms2 < finish)
     pylab.hist(np.array(injtime_ms2)[ind], bins=np.linspace(0, max(injtime_ms2), 100),
         color=COLORS[1], alpha=0.5, lw=1, edgecolor='k')
-    pylab.xlabel("Injection Time, ms", fontsize=15)
-    pylab.ylabel("Scans #", fontsize=15)
-    pylab.title('MS2_IT')
+    pylab.xlabel("Injection time, ms", fontsize=15)
+    pylab.ylabel("# of spectra", fontsize=15)
+    pylab.title('MS2 injection time')
 
 def realtop(starttime_ms1, indexms1):
     if starttime_ms1 is None:
@@ -215,7 +215,7 @@ def realtop(starttime_ms1, indexms1):
     pylab.legend(loc=1,markerscale=2,fontsize=15)
     pylab.xlabel('RT, min',fontsize=15)
     pylab.ylabel('TopN',fontsize=15)
-    pylab.title('Real_TopN',fontsize=15)
+    pylab.title('Real TopN',fontsize=15)
 
 def charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2):
     if starttime_ms2 is None:
@@ -281,7 +281,7 @@ def angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef):
     pylab.scatter(angle_x, angle_y_mod, alpha=0.5, color=COLORS[1], label='score=%.2f' % per)
     pylab.xlim(0, np.percentile(angle_x, 99.5))
     pylab.ylim(0, np.percentile(angle_y_mod, 99.5))
-    pylab.xlabel('#peaks', fontsize=15)
+    pylab.xlabel('# peaks', fontsize=15)
     pylab.legend(fontsize=15, loc=1)
     pylab.ylabel('avg intensity, 10^%i'%np.log10(coef), fontsize=15)
 
