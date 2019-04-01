@@ -147,14 +147,16 @@ def aqtime(starttime_ms1, starttime_ms2):
     if starttime_ms1 is None or starttime_ms2 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
-    starttime_all = sorted([(x, 1) for x in starttime_ms1]+[(x, 2) for x in starttime_ms2])
+
+    starttime_all = sorted([(x, 1) for x in starttime_ms1] + [(x, 2) for x in starttime_ms2])
     aqtime_ms1 = []
     aqtime_ms2 = []
     for i, k in enumerate(starttime_all[:-1]):
-        if k[1] == 1 and ((k[1]-starttime_all[i+1][1]) == -1) or ((k[1]-starttime_all[i+1][1]) == 0):
-            aqtime_ms1.append(starttime_all[i+1][0]-k[0])
-        if k[1] == 2 and ((k[1]-starttime_all[i+1][1]) == 1) or ((k[1]-starttime_all[i+1][1]) == 0):
-            aqtime_ms2.append(starttime_all[i+1][0]-k[0])
+        aq = starttime_all[i+1][0] - k[0]
+        if k[1] == 1:
+            aqtime_ms1.append(aq)
+        if k[1] == 2:
+            aqtime_ms2.append(aq)
     pylab.hist(np.array(aqtime_ms1)*60, histtype='step', lw=2, density=True, label='MS1, sum=%.2f min'%sum(aqtime_ms1), color=COLORS[0])
     pylab.hist(np.array(aqtime_ms2)*60, histtype='step', lw=2, density=True, label='MS2, sum=%.2f min'%sum(aqtime_ms2), color=COLORS[1])
     pylab.legend(loc=1, fontsize=12)
