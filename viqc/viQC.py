@@ -213,7 +213,7 @@ def realtop(starttime_ms1, indexms1):
     fit = lowess(np.ediff1d(indexms1)-1, starttime_ms1[:-1], frac=0.05, it=0)
     pylab.plot(fit[:,0],fit[:,1], "r-" ,label='Average TopN')
     pylab.ylim(0, max(np.ediff1d(indexms1)) * 1.1)
-    pylab.xlim(0, starttime_ms1.max() * 1.07)
+    pylab.xlim(starttime_ms1.min() * .95, starttime_ms1.max() * 1.07)
     pylab.legend(loc=1,markerscale=2,fontsize=15)
     pylab.xlabel('RT, min',fontsize=15)
     pylab.ylabel('TopN',fontsize=15)
