@@ -13,6 +13,7 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 import os
 import argparse
 import logging
+import re
 from collections import Counter
 
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
@@ -108,12 +109,40 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
         d = {'mgf': mgf.IndexedMGF, 'mzml': mzml.MzML}
         reader = d[extension.lower()]
         f = reader(name_calibration)
+        pattern = r'scan=\d+'
+        replace = 'scan={}'
+        if extension.lower() == 'mzml':
+            id_format = re.sub(pattern,replace,f[0]['id'])
+        if extension.lower() == 'mgf':
+            id_format = re.sub(pattern,replace,f[0]['params']['title'])
         with open(name_psm) as fIn:
             reader = csv.DictReader(fIn, delimiter=delim)
             next(reader)
             for row in reader:
-                psm = row[colname].split(' RTINSECONDS')[0]
-                sc = f[psm]
+                psm = row["spectrum"].split(' RTINSECONDS')[0]
+                if psm in f :
+                    match = True
+                else:
+                    print ('here')
+                    if extension.lower() == 'mgf':
+                        logging.info('Cannot match spectrum names, please check RefFile name for spaces')
+                        f_split = dict()
+                        for k in f.index.keys():
+                            f_split[k.split(' ')[0]]=f[k]
+                        f = f_split
+                    if psm in f: 
+                        match = True
+                    else:
+                        match = False     
+                break
+            print ('done')
+            for row in reader:
+                psm = row["spectrum"].split(' RTINSECONDS')[0]
+                if match: 
+                    sc = f[psm]
+                else:
+                    sc_number = re.search(r'(\d+)\.\1',psm).group(1)
+                    sc = f[id_format.format(sc_number)]    
                 x1 = len(sc['m/z array'])
                 x.append(x1)
                 y1 = sc['intensity array'].sum(dtype=float) / sc['intensity array'].size
@@ -246,7 +275,7 @@ def angle_calculation(x, y, angle_x, angle_y, coef):
         if per_1_x < i[0] < per_99_x and per_1_y < i[1] < per_99_y:
             x_mod.append(i[0])
             y_mod.append(i[1])
-    for i in np.arange(0.001, 1, 0.001):
+    for i in np.arange(0, 1, 0.0001):
         dif = []
         for k in zip(x_mod, y_mod):
             dif.append(i * (k[0]-per_1_x) + per_1_y - k[1])
@@ -256,7 +285,7 @@ def angle_calculation(x, y, angle_x, angle_y, coef):
             break
         else:
             continue
-    for j in np.arange(1, 0.001, -0.01):
+    for j in np.arange(1, 0, -0.001):
         dif = []
         for k in zip(x_mod, y_mod):
             dif.append(j * (k[0]-per_1_x) + per_1_y - k[1])
@@ -275,7 +304,7 @@ def angle_calculation(x, y, angle_x, angle_y, coef):
     return under, above, per_1_x, per_1_y, per, angle_y_mod, coef
 
 def angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef):
-    a = np.arange(per_1_x, 1000, 100.)
+    a = np.arange(per_1_x, max(angle_x), 100.)
     b = under * (a-per_1_x) + per_1_y
     pylab.plot(a, b, color='black')
     c = above * (a-per_1_x) + per_1_y
