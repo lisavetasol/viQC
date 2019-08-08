@@ -119,11 +119,10 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
             reader = csv.DictReader(fIn, delimiter=delim)
             next(reader)
             for row in reader:
-                psm = row["spectrum"].split(' RTINSECONDS')[0]
+                psm = row[colname].split(' RTINSECONDS')[0]
                 if psm in f :
                     match = True
                 else:
-                    print ('here')
                     if extension.lower() == 'mgf':
                         logging.info('Cannot match spectrum names, please check RefFile name for spaces')
                         f_split = dict()
@@ -135,9 +134,8 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
                     else:
                         match = False     
                 break
-            print ('done')
             for row in reader:
-                psm = row["spectrum"].split(' RTINSECONDS')[0]
+                psm = row[colname].split(' RTINSECONDS')[0]
                 if match: 
                     sc = f[psm]
                 else:
