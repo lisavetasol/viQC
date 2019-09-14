@@ -25,8 +25,8 @@ from scipy.optimize import curve_fit
 
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
 
-def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
-    logging.info('Reading data ... ')
+def read_data(name, name_mzml, name_calibration, extension, name_psm, delim, colname):
+    logging.info('Reading data from %s"... ', name)
     injtime_ms1 = []
     injtime_ms2 = []
     starttime_ms1 = []
@@ -158,7 +158,6 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
         coef = 10**(len(str(int(np.mean(y))))-1)
         y = np.array(y) / coef
     prec_without_intense = 100*prec_int.count(None)/len(prec_int)
-    print (a)
     logging.info('Reading is complete.')
     for error in errors:
         logging.warning('There was an error extracting %s information. Some figures will not be produced.', error)
@@ -535,7 +534,7 @@ def process_file(name_mzml, args):
 
     injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, \
         mz_ms2, angle_x, angle_y, prec_int, x, y, coef = read_data(
-            name_mzml, name_calibr, extension, name_psm, delim, colname)
+           name, name_mzml, name_calibr, extension, name_psm, delim, colname)
 
     if args.stop is None:
         start, finish = start_finish(indexms1, starttime_ms1) if starttime_ms1 is not None else None
@@ -585,8 +584,8 @@ def process_file(name_mzml, args):
 
     outname = os.path.join(output, name + '_viQC.png')
     pylab.savefig(outname)
-    outname = os.path.join(output, name + '_viQC.svg')
-    pylab.savefig(outname)
+    #outname = os.path.join(output, name + '_viQC.svg')
+    #pylab.savefig(outname)
     pylab.close(fig)
     logging.info("Calculating metrics for %s", name)
     return ms1_f, ms2_f, mean_it_f, perc_95_it_f, mean_prec_f, rsme_prec_f, std_prec_f, ch_state_numbers, fit_realtop, median_peaks_ms2, median_intens_ms2, per
