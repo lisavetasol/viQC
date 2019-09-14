@@ -624,8 +624,8 @@ def mult_process(name_files, args):
         output = args.output
     outname = os.path.join(output, 'Common_%i_files_viQC.png' % len(name_files))
     pylab.savefig(outname)
-    outname = os.path.join(output, 'Common_%i_files_viQC.svg' % len(name_files))
-    pylab.savefig(outname)
+    #outname = os.path.join(output, 'Common_%i_files_viQC.svg' % len(name_files))
+    #pylab.savefig(outname)
     #outfile_txt = '/home/lisa/QC/viQC_2_0/Gliob/Gliob_odd_angle_score/output_file'
     #np.save(outfile_txt, results_mult)
     logging.info('Output common figure saved to %s', outname)
