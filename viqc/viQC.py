@@ -26,7 +26,7 @@ from scipy.optimize import curve_fit
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
 
 def read_data(name, name_mzml, name_calibration, extension, name_psm, delim, colname):
-    logging.info('Reading data from %s"... ', name)
+    logging.info('Reading data from %s... ', name)
     injtime_ms1 = []
     injtime_ms2 = []
     starttime_ms1 = []
