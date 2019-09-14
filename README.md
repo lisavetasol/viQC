@@ -12,6 +12,8 @@ Requirements
 - pandas
 - seaborn
 - statsmodels
+- scipy
+- sklearn
 
 Installation via pip
 
@@ -47,7 +49,8 @@ $ pip install git+https://bitbucket.org/lisavetasol/viqc.git
 
 To run viQC:
 
-``viQC input_mzML``
+``viQC input_mzML(s)``
+in case of multiple files the program builds summarizing graphs as well as separate pictures for each analysis  
 
 For help on parameters:
 
