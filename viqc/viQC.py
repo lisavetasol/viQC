@@ -170,11 +170,11 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
                 y.append(y1)
         coef = 10 ** (len(str(int(np.mean(y)))) - 1)
         y = np.array(y) / coef
-    prec_without_intense = 100 * prec_int.count(None) / len(prec_int)
+    prec_without_intense = round (100 * prec_int.count(None) / len(prec_int), 2)
     logging.info('Reading is complete.')
     for error in errors:
         logging.warning('There was an error extracting %s information. Some figures will not be produced.', error)
-        logging.info('%s %% of precursors have not intensity information', prec_without_intense)
+        logging.info('%s %% of precursor ions have no intensity information', prec_without_intense)
     return (injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2,
             mz_ms2, angle_x, angle_y, prec_int, prec_isolated_mz, x, y, coef)
 
@@ -258,7 +258,7 @@ def monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult):
     ch = np.array(charge_ms2)[mask]
     diff = (isolated - mono) * ch
 
-    pylab.hist(diff, bins=np.arange(-0.25, 5, 1), width=0.5, align='mid', color=COLORS[2])
+    pylab.hist(np.round(diff, 0), bins=np.arange(-0.25, 5, 1), width=0.5, align='mid', color=COLORS[2])
     a, b = np.histogram(diff, bins=np.arange(-0.25, 5, 1))
     mod = 100 * sum(a[1:3]) / a[0]
     t = str(int(mod)) + '% $1^{st}$ and $2^{nd}$ isotopes \n' + str(zeros) + ' prec. with zero charges'
