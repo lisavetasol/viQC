@@ -547,7 +547,7 @@ def charge_mult(names, ch_scans, gs0, f):
 
 def real_top_mult(names, fit):
     n_files = len(names)
-    sns.boxplot(y=fit, x=np.arange(0, n_files), orient='v', color=COLORS[2], whis=1, notch=False)
+    sns.boxplot(data = fit, orient='v', color=COLORS[2], whis=1, notch=False)
     pylab.xticks(np.arange(n_files), names, rotation=60)
     pylab.ylabel('smooth topN')
 
