@@ -162,7 +162,7 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
                 if match:
                     sc = f[psm]
                 else:
-                    sc_number = re.search(r'(\d+)\.\1', psm).group(1)
+                    sc_number = re.search(r'(\d+)\.\1', psm).group(1).lstrip('0')
                     sc = f[id_format.format(sc_number)]
                 x1 = len(sc['m/z array'])
                 x.append(x1)
