@@ -8,24 +8,18 @@ from pyteomics import mzml, mgf
 import seaborn as sns
 import pkg_resources
 
-# try:
-# import seaborn as sns
-# except ImportError:
-# pass
 import numpy as np
 from statsmodels.nonparametric.smoothers_lowess import lowess
 import os
 import argparse
 import logging
 import re
-import scipy
 import matplotlib.gridspec as gridspec
 from sklearn.metrics import mean_squared_error
 from scipy import optimize
 from scipy.stats import norm
 from collections import Counter
 from scipy.signal import find_peaks
-from scipy.optimize import curve_fit
 
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
 
@@ -121,7 +115,9 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
                 logging.warning('Unexpected unit: %s', uinfo)
             return arr
 
+    logging.debug('starttime_ms1: %s', starttime_ms1)
     starttime_ms1 = convert_times(starttime_ms1)
+    logging.debug('starttime_ms1: %s', starttime_ms1)
     starttime_ms2 = convert_times(starttime_ms2)
 
     coef = 10 ** (len(str(int(np.mean(angle_y)))) - 1)
@@ -182,7 +178,7 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
 def ms1_ms2(starttime_ms1, starttime_ms2):
     if starttime_ms1 is None or starttime_ms2 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
-        return
+        return None, None
     width = 0.5
     ms1 = starttime_ms1.size
     ms2 = starttime_ms2.size
@@ -589,8 +585,10 @@ def process_file(name_mzml, args):
     mz_ms2, angle_x, angle_y, prec_int, prec_isolated_mz, x, y, coef = read_data(
         name_mzml, name_calibr, extension, name_psm, delim, colname)
 
+    logging.debug('starttime_ms1: %s', starttime_ms1)
+
     if args.stop is None:
-        start, finish = start_finish(indexms1, starttime_ms1) if starttime_ms1 is not None else None
+        start, finish = start_finish(indexms1, starttime_ms1) if starttime_ms1 is not None else None, None
     else:
         finish = args.stop
         start = args.start
@@ -697,8 +695,6 @@ def mult_process(name_files, args):
     outname = os.path.join(output, 'Common_%i_files_viQC.%s' % (len(name_files), args.pic))
     pylab.savefig(outname)
 
-    # outfile_txt = '/home/lisa/QC/viQC_2_0/Gliob/Gliob_odd_angle_score/output_file'
-    # np.save(outfile_txt, results_mult)
     logging.info('Output common figure saved to %s', outname)
 
 
@@ -743,8 +739,8 @@ def main():
     parser.add_argument('-pic',
                         help='the output figure type (png or svg for vector graphic). Default png',
                         default='png')
-    parser.add_argument('-log', '--logname',
-                        help='log file name. By default, log to stdout')
+    parser.add_argument('-log', '--logname', help='log file name. By default, log to stdout')
+    parser.add_argument('--debug', action='store_true')
     try:
         parser.add_argument('-V', '--version', action='version',
             version='%s' % (pkg_resources.require("viQC")[0], ))
@@ -753,9 +749,10 @@ def main():
     args = parser.parse_args()
 
     logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
-                        datefmt='[%H:%M:%S]', level=logging.INFO, filename=args.logname)
+                        datefmt='[%H:%M:%S]', level=(logging.INFO, logging.DEBUG)[args.debug], filename=args.logname)
     stats = StatsHandler()
     logging.getLogger().addHandler(stats)
+    logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
     exist = True
     for infile in args.input:

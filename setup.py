@@ -16,7 +16,7 @@ setup(
     author               = 'Elizaveta Solovyeva',
     author_email         = 'pyteomics@googlegroups.com',
     url                  = 'http://hg.theorchromo.ru/viQC',
-    install_requires     = ['pyteomics[DF]', 'seaborn', 'statsmodels', 'lxml', 'sklearn', 'scipy'],
+    install_requires     = ['pyteomics[DF]', 'seaborn', 'statsmodels', 'lxml', 'scikit-learn', 'scipy'],
     classifiers          = ['Intended Audience :: Science/Research',
                             'Programming Language :: Python :: 2.7',
                             'Programming Language :: Python :: 3',
