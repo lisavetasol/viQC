@@ -268,6 +268,7 @@ def monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult):
 
 
 def inten_prec(starttime_ms2, start, finish, prec_int, mult):
+    logging.debug('inten_prec received arguments: %s, %s, %s, %s, %s', starttime_ms2, start, finish, prec_int, mult)
     if starttime_ms2 is None:
         pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
         return None, None, None
@@ -588,11 +589,11 @@ def process_file(name_mzml, args):
     logging.debug('starttime_ms1: %s', starttime_ms1)
 
     if args.stop is None:
-        start, finish = start_finish(indexms1, starttime_ms1) if starttime_ms1 is not None else None, None
+        start, finish = start_finish(indexms1, starttime_ms1) if starttime_ms1 is not None else (None, None)
     else:
         finish = args.stop
         start = args.start
-
+    logging.debug('start = %s, finish = %s', start, finish)
     if args.charge is None:
         maxcharge = max(charge_ms2)
         logging.info('Maximum charge in file: %s', maxcharge)
@@ -745,7 +746,7 @@ def main():
         parser.add_argument('-V', '--version', action='version',
             version='%s' % (pkg_resources.require("viQC")[0], ))
     except:
-        print ('Version information is not available, please clone the whole directory from https://github.com/lisavetasol/viQC')
+        print('Version information is not available, please clone the whole directory from https://github.com/lisavetasol/viQC')
     args = parser.parse_args()
 
     logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
