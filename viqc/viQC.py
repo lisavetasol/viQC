@@ -278,6 +278,8 @@ def inten_prec(starttime_ms2, start, finish, prec_int, mult):
     ind = np.logical_and(starttime_ms2 > start, starttime_ms2 < finish)
     prec = np.log10(np.array(prec_int, dtype=float))[ind]
     prec = prec[~np.isnan(prec)]
+    logging.debug('prec: %s', prec)
+    logging.debug('prec min: %s, prec max: %s', prec.min(), prec.max())
 
     if mult:
         def gaussian(x, a, x0, sigma):
@@ -295,11 +297,12 @@ def inten_prec(starttime_ms2, start, finish, prec_int, mult):
         pylab.title('Intensity of precursor ions')
         rsme = mean_squared_error(y[:-1], counts)
         return np.mean(prec), rsme, popt[2]
-
-    if not mult:
+    else:
+        a = np.nanpercentile(prec, 0.1)
         b = np.nanpercentile(prec, 99.9)
+        logging.debug('a = %s, b = %s', a, b)
         pylab.hist(prec, bins=np.linspace(0, max(prec), 100), color=COLORS[0], alpha=0.5, lw=1, edgecolor='k')
-        pylab.xlim(np.nanpercentile(prec, 0.1), b)
+        pylab.xlim(a, b)
         pylab.ylabel("# of spectra", fontsize=15)
         pylab.xlabel("Log10(intensity)", fontsize=15)
         pylab.title('Intensity of precursor ions')
