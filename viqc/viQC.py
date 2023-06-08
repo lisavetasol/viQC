@@ -276,8 +276,12 @@ def inten_prec(starttime_ms2, start, finish, prec_int, mult):
         pylab.text(0.5, 0.5, 'Prec_intensity information missing', ha='center')
         return None, None, None
     ind = np.logical_and(starttime_ms2 > start, starttime_ms2 < finish)
-    prec = np.log10(np.array(prec_int, dtype=float))[ind]
-    prec = prec[~np.isnan(prec)]
+    prec = np.array(prec_int, dtype=float)[ind]
+    non0 = (prec > 0)
+    logging.debug('%d of %d precursors have zero intensity, excluding them from analysis.',
+        prec.size - non0.sum(), prec.size)
+
+    prec = np.log10(prec[(~np.isnan(prec)) & non0])
     logging.debug('prec: %s', prec)
     logging.debug('prec min: %s, prec max: %s', prec.min(), prec.max())
 
