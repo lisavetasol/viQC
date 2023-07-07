@@ -42,7 +42,7 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
     y = []
     errors = set()
     a = 0
-    for sc in mzml.read(name_mzml):
+    for i, sc in enumerate(mzml.read(name_mzml)):
         if 'injection time' not in errors:
             try:
                 injtime = sc['scanList']['scan'][0]['ion injection time']
@@ -66,7 +66,7 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
                 starttime_ms1.append(starttime)
             except AttributeError:
                 pass
-            indexms1.append(int(sc['id'].split(' ')[2].split('=')[1]))
+            indexms1.append(i)
         if sc['ms level'] == 2:
             try:
                 injtime_ms2.append(injtime)
