@@ -24,6 +24,48 @@ from scipy.signal import find_peaks
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
 
 
+class PyplotContext:
+    def __init__(
+        self, separate_figures: bool,
+        wide_figure: bool = False, output_path=None,
+        grid_position=None, grid_size=None
+    ):
+        self.separate_figures = separate_figures
+        self.output_path = output_path
+        self.wide_figure = wide_figure
+        self.grid_position = grid_position
+        self.grid_size = grid_size
+
+    def __enter__(self):
+        if self.separate_figures:
+            figsize = ((15. if self.wide_figure else 7.5), 7.)
+            plt.figure(figsize=figsize)
+        else:
+            colspan = (2 if self.wide_figure else 1)
+            plt.subplot2grid(self.grid_size, self.grid_position, colspan=colspan)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.separate_figures:
+            plt.savefig(self.output_path)
+            plt.close()       
+
+
+class PyplotContextConstructor:
+    def __init__(self, separate_figures: bool = False, out_dir=None) -> None:
+        self.separate_figures = separate_figures
+        self.out_dir = out_dir
+
+    def __call__(self, name, grid_position=None, grid_size=None, wide_figure=False):
+        return PyplotContext(
+            separate_figures=self.separate_figures,
+            output_path=os.path.join(self.out_dir, f'{name}.png'),
+            grid_position=grid_position,
+            grid_size=grid_size,
+            wide_figure=wide_figure
+        )
+
+
 def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
     name = os.path.split(name_mzml)[1].split('.')[0]
     logging.info('Reading data for %s... ' % name)
@@ -579,12 +621,14 @@ def process_file(name_mzml, args):
     if (args.refPSM is None) + (args.refFile is None) == 1:
         logging.error('Not enough files for angle score calculation provided, skipping angle score.')
 
+
     name = os.path.split(name_mzml)[1].split('.')[0]
     name_psm = args.refPSM
     name_calibr = args.refFile
     extension = os.path.split(name_calibr)[1].split('.')[1] if name_calibr else None
     delim = str(args.d)
     colname = str(args.cn)
+    plt_manager = PyplotContextConstructor(args.sf, os.path.join(output, name + '_viQC'))
 
     if (args.refPSM is not None) and (os.path.split(name_calibr)[1].split('.')[0] not in name_psm):
         logging.warning('File names for angle score calibration don\'t match!')
@@ -616,44 +660,46 @@ def process_file(name_mzml, args):
     plt.rcParams['font.size'] = 15
 
     # build pictures
-    fig = plt.figure(figsize=(15, 40))
-    plt.subplot2grid((6, 2), (0, 0))
-    ms1_f, ms2_f = ms1_ms2(starttime_ms1, starttime_ms2)
-    plt.subplot2grid((6, 2), (0, 1))
-    aqtime(starttime_ms1, starttime_ms2)
+    if not args.sf:
+        fig = plt.figure(figsize=(15, 40))
+    with plt_manager("ms1_ms2", (0, 0), (6, 2), False):
+        ms1_f, ms2_f = ms1_ms2(starttime_ms1, starttime_ms2)
+    with plt_manager("aqtime", (0, 1), (6, 2), False):
+        aqtime(starttime_ms1, starttime_ms2)
 
-    plt.subplot2grid((6, 2), (1, 0))
-    mean_prec_f, rsme_prec_f, std_prec_f = inten_prec(starttime_ms2, start, finish, prec_int, mult)
-    plt.subplot2grid((6, 2), (1, 1))
-    MI_error_percent = monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult)
+    with plt_manager("inten_prec", (1, 0), (6, 2), False):
+        mean_prec_f, rsme_prec_f, std_prec_f = inten_prec(starttime_ms2, start, finish, prec_int, mult)
+    with plt_manager("monoisotopic_error", (1, 1), (6, 2), False):
+        MI_error_percent = monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult)
 
-    plt.subplot2grid((6, 2), (2, 0), colspan=2)
-    mean_it_f, perc_95_it_f = it_ms1(starttime_ms1, injtime_ms1, start, finish, mult)
+    with plt_manager("it_ms1", (2, 0), (6, 2), True):
+        mean_it_f, perc_95_it_f = it_ms1(starttime_ms1, injtime_ms1, start, finish, mult)
 
-    plt.subplot2grid((6, 2), (3, 0), colspan=2)
-    it_ms2(starttime_ms2, start, finish, injtime_ms2)
+    with plt_manager("it_ms2", (3, 0), (6, 2), True):
+        it_ms2(starttime_ms2, start, finish, injtime_ms2)
 
-    plt.subplot2grid((6, 2), (4, 0), colspan=2)
-    ch_state_numbers = charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2)
+    with plt_manager("charge", (4, 0), (6, 2), True):
+        ch_state_numbers = charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2)
 
-    plt.subplot2grid((6, 2), (5, 0))
-    fit_realtop = realtop(starttime_ms1, indexms1, start, finish, mult)
+    with plt_manager("realtop", (5, 0), (6, 2), False):
+        fit_realtop = realtop(starttime_ms1, indexms1, start, finish, mult)
 
     if name_psm is not None:
         under, above, per_1_x, per_1_y, per, angle_y_mod, coef = angle_calculation(x, y, angle_x, angle_y, coef)
-        plt.subplot2grid((6, 2), (5, 1))
-        angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef)
+        with plt_manager("angle", (5, 1), (6, 2), False):
+            angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef)
         median_peaks_ms2, median_intens_ms2 = None, None
     else:
-        plt.subplot2grid((6, 2), (5, 1))
-        median_peaks_ms2, median_intens_ms2 = inten_number_peaks_ms1(angle_x, angle_y)
+        with plt_manager("inten_number_peaks_ms1", (5, 1), (6, 2), False):
+            median_peaks_ms2, median_intens_ms2 = inten_number_peaks_ms1(angle_x, angle_y)
         per = None
 
     outname = os.path.join(output, name + '_viQC.%s' % args.pic)
-    plt.savefig(outname)
-    # outname = os.path.join(output, name + '_viQC.svg')
-    # plt.savefig(outname)
-    plt.close(fig)
+    if not args.sf:
+        plt.savefig(outname)
+        # outname = os.path.join(output, name + '_viQC.svg')
+        # plt.savefig(outname)
+        plt.close(fig)
     logging.info("Calculating metrics for %s", name)
     return ms1_f, ms2_f, mean_it_f, perc_95_it_f, mean_prec_f, rsme_prec_f, std_prec_f, ch_state_numbers, fit_realtop, median_peaks_ms2, median_intens_ms2, per, MI_error_percent
 
@@ -744,6 +790,8 @@ def main():
                              'maximum analysis time is used')
     parser.add_argument('-charge', type=int,
                         help='max charge of precursor ions. By default, all charges are considered')
+    parser.add_argument('-sf', '--separate-figures', action='store_true',
+                        help='save figures as separate files')
     parser.add_argument('-pic',
                         help='the output figure type (png or svg for vector graphic). Default png',
                         default='png')
