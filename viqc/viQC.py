@@ -57,6 +57,8 @@ class PyplotContextConstructor:
         self.separate_figures = separate_figures
         self.out_dir = out_dir
         self.grid_size = grid_size
+        if separate_figures and not os.path.exists(out_dir):
+            os.makedirs(out_dir)
 
     def __call__(self, name, grid_position=None, grid_size=None, wide_figure=False):
         return PyplotContext(
@@ -94,6 +96,8 @@ class GridOrSaveContextConstructor:
         self.out_dir = out_dir
         self.grid_size = grid_size
         self.figsize = figsize
+        if separate_figures and not os.path.exists(out_dir):
+            os.makedirs(out_dir)
         if not self.separate_figures:
             self.f = plt.figure(figsize=figsize)
             self.gs0 = gridspec.GridSpec(*self.grid_size, figure=self.f)
@@ -103,7 +107,7 @@ class GridOrSaveContextConstructor:
         return GridOrSaveContext(
             separate_figures=self.separate_figures,
             out_path=os.path.join(self.out_dir, f'{name}.png'),
-            grid_position=grid_position,
+            grid_position=(0 if self.separate_figures else grid_position),
             gs0=(gridspec.GridSpec(1, 1, f) if self.separate_figures else self.gs0),
             f=f
         )
@@ -600,7 +604,7 @@ def it_ms1_mult(names, mean_it_ms1, perc_95, sps, f: Figure):
     ax.set_ylim(min(np.array(mean_it_ms1) - np.array(perc_95)) - 1, max(np.array(mean_it_ms1) + np.array(perc_95)) + 1)
     #ax.legend(loc=1, fontsize=15)
     ax.set_ylabel('Injection time, ms', fontsize=15)
-    ax.title('Mean IT MS1, 95th percentile')
+    ax.set_title('Mean IT MS1, 95th percentile')
 
 
 def prec_int_mult(names, input_data, sps, f: Figure):
@@ -772,11 +776,11 @@ def mult_process(name_files, args):
     logging.info("Combine all together...")
     #  build common pictures
     grid_manager = GridOrSaveContextConstructor(
-        args.sf, os.path.dirname(outname), grid_size=(4, 2),
+        args.sf, os.path.splitext(outname)[0], grid_size=(4, 2),
         figsize=((15, 10) if args.sf else(30, 40))
     )
     with grid_manager("N of MS scans", 0) as gm:
-        graph_with_break(names, results_mult[0], results_mult[1], '# of MS1 scans', '# of MS/MS scans', '#scans, 10^3', 0,
+        graph_with_break(names, results_mult[0], results_mult[1], '# of MS1 scans', '# of MS/MS scans', '#scans, 10^3',
                         gm.sps, gm.f)  # MS1/MS2 graph
     with grid_manager("Injection time", 1) as gm:
         it_ms1_mult(names, results_mult[2], results_mult[3], gm.sps, gm.f)
@@ -844,7 +848,7 @@ def main():
     parser.add_argument('-charge', type=int,
                         help='max charge of precursor ions. By default, all charges are considered')
     parser.add_argument('-sf', '--separate-figures', action='store_true',
-                        help='save figures as separate files')
+                        help='save figures as separate files', dest="sf")
     parser.add_argument('-pic',
                         help='the output figure type (png or svg for vector graphic). Default png',
                         default='png')
