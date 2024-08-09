@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use('agg')
 import csv
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from pyteomics import mzml, mgf
 import seaborn as sns
 import pkg_resources
@@ -52,17 +53,59 @@ class PyplotContext:
 
 
 class PyplotContextConstructor:
-    def __init__(self, separate_figures: bool = False, out_dir=None) -> None:
+    def __init__(self, separate_figures: bool = False, out_dir=None, grid_size=None) -> None:
         self.separate_figures = separate_figures
         self.out_dir = out_dir
+        self.grid_size = grid_size
 
     def __call__(self, name, grid_position=None, grid_size=None, wide_figure=False):
         return PyplotContext(
             separate_figures=self.separate_figures,
             output_path=os.path.join(self.out_dir, f'{name}.png'),
             grid_position=grid_position,
-            grid_size=grid_size,
+            grid_size=self.grid_size,
             wide_figure=wide_figure
+        )
+
+
+class GridOrSaveContext:
+    def __init__(
+        self, separate_figures: bool = False, out_path=None,
+        grid_position=0, gs0=None, f: Figure = None):
+        self.separate_figures = separate_figures
+        self.out_path = out_path
+        self.grid_position = grid_position
+        self.gs0 = gs0
+        self.f = f
+        self.sps = self.gs0[self.grid_position]
+
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.separate_figures:
+            self.f.savefig(self.out_path)
+            plt.close(self.f)
+
+
+class GridOrSaveContextConstructor:
+    def __init__(self, separate_figures: bool = False, out_dir=None, grid_size=None, figsize=None) -> None:
+        self.separate_figures = separate_figures
+        self.out_dir = out_dir
+        self.grid_size = grid_size
+        self.figsize = figsize
+        if not self.separate_figures:
+            self.f = plt.figure(figsize=figsize)
+            self.gs0 = gridspec.GridSpec(*self.grid_size, figure=self.f)
+
+    def __call__(self, name, grid_position=0):
+        f = (plt.figure(figsize=self.figsize) if self.separate_figures else self.f)
+        return GridOrSaveContext(
+            separate_figures=self.separate_figures,
+            out_path=os.path.join(self.out_dir, f'{name}.png'),
+            grid_position=grid_position,
+            gs0=(gridspec.GridSpec(1, 1, f) if self.separate_figures else self.gs0),
+            f=f
         )
 
 
@@ -514,8 +557,9 @@ def start_finish(indexms1, starttime_ms1):
     return start, finish
 
 
-def graph_with_break(names, ms1, ms2, title1, title2, ytitle, n, gs0, f):
-    gs00 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs0[n])
+def graph_with_break(names, ms1, ms2, title1, title2, ytitle, sps, f: Figure):
+    '''gs0[0]'''
+    gs00 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=sps)
     n_files = len(names)
     ms1 = np.true_divide(ms1, 1000)
     ms2 = np.true_divide(ms2, 1000)
@@ -545,22 +589,25 @@ def graph_with_break(names, ms1, ms2, title1, title2, ytitle, n, gs0, f):
     ax1.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)
 
 
-def it_ms1_mult(names, mean_it_ms1, perc_95):
+def it_ms1_mult(names, mean_it_ms1, perc_95, sps, f: Figure):
     n_files = len(names)
     a = np.arange(0, n_files)
-    plt.errorbar(a, mean_it_ms1, perc_95, linestyle='None', capsize=10, fmt='-o', color=COLORS[0], ecolor='black',
+    g00 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=sps)
+    ax = f.add_subplot(g00[:, :])
+    ax.errorbar(a, mean_it_ms1, perc_95, linestyle='None', capsize=10, fmt='-o', color=COLORS[0], ecolor='black',
                    elinewidth=1)
-    plt.xticks(np.arange(n_files), names, rotation=60, fontsize=15)
-    plt.ylim(min(np.array(mean_it_ms1) - np.array(perc_95)) - 1, max(np.array(mean_it_ms1) + np.array(perc_95)) + 1)
-    #plt.legend(loc=1, fontsize=15)
-    plt.ylabel('Injection time, ms', fontsize=15)
-    plt.title('Mean IT MS1, 95th percentile')
+    ax.set_xticks(np.arange(n_files), names, rotation=60, fontsize=15)
+    ax.set_ylim(min(np.array(mean_it_ms1) - np.array(perc_95)) - 1, max(np.array(mean_it_ms1) + np.array(perc_95)) + 1)
+    #ax.legend(loc=1, fontsize=15)
+    ax.set_ylabel('Injection time, ms', fontsize=15)
+    ax.title('Mean IT MS1, 95th percentile')
 
 
-def prec_int_mult(names, input_data, gs0, f):
+def prec_int_mult(names, input_data, sps, f: Figure):
+    '''gs0[2]'''
     input_names = ['mean', 'rsme', 'std']
     a = np.arange(0, len(names))
-    gs11 = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs0[2])
+    gs11 = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=sps)
     for i in range(3):
         ax = f.add_subplot(gs11[i, :])
         ax.plot(a, input_data[i], 'o:', color=COLORS[i], label=input_names[i])
@@ -573,11 +620,11 @@ def prec_int_mult(names, input_data, gs0, f):
     plt.xticks(np.arange(len(names)), names, rotation=60, color='black')
 
 
-def charge_mult(names, ch_scans, gs0, f):
+def charge_mult(names, ch_scans, sps, f: Figure):
     pad = len(max(ch_scans, key=len))
     charges = np.array([i + [0] * (pad - len(i)) for i in ch_scans])
     msk = ~np.all(charges == 0, axis=0)
-    gs00 = gridspec.GridSpecFromSubplotSpec(msk.sum(), 1, subplot_spec=gs0[3])
+    gs00 = gridspec.GridSpecFromSubplotSpec(msk.sum(), 1, subplot_spec=sps)
     for i, j in zip(np.arange(msk.sum()), np.arange(pad)[msk]):
         a = np.arange(0, len(names))
         ch_state = charges[:, j]
@@ -591,20 +638,24 @@ def charge_mult(names, ch_scans, gs0, f):
     plt.xticks(np.arange(len(names)), names, rotation=60, color='black')
 
 
-def real_top_mult(names, fit):
+def real_top_mult(names, fit, sps, f: Figure):
     n_files = len(names)
-    sns.boxplot(data = fit, orient='v', color=COLORS[2], whis=1, notch=False)
-    plt.xticks(np.arange(n_files), names, rotation=60)
-    plt.ylabel('smooth topN')
+    gs00 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=sps)
+    ax = f.add_subplot(gs00[:, :])
+    sns.boxplot(data = fit, orient='v', color=COLORS[2], whis=1, notch=False, ax=ax)
+    ax.set_xticks(np.arange(n_files), names, rotation=60)
+    ax.set_ylabel('smooth topN')
 
 
-def simple_graph_mult(names, values, title):
+def simple_graph_mult(names, values, title, sps, f: Figure):
     a = range(len(names))
-    plt.plot(a, values, 'o:', color=COLORS[3])
-    plt.title(title)
+    gs00 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=sps)
+    ax = f.add_subplot(gs00[:, :])
+    ax.plot(a, values, 'o:', color=COLORS[3])
+    ax.set_title(title)
     r = (max(values) - min(values)) / 10
-    plt.ylim(min(values) - r, max(values) + r)
-    plt.xticks(a, names, rotation=60)
+    ax.set_ylim(min(values) - r, max(values) + r)
+    ax.set_xticks(a, names, rotation=60)
     #plt.legend()
 
 
@@ -628,7 +679,7 @@ def process_file(name_mzml, args):
     extension = os.path.split(name_calibr)[1].split('.')[1] if name_calibr else None
     delim = str(args.d)
     colname = str(args.cn)
-    plt_manager = PyplotContextConstructor(args.sf, os.path.join(output, name + '_viQC'))
+    plt_manager = PyplotContextConstructor(args.sf, os.path.join(output, name + '_viQC'), grid_size=(6,2))
 
     if (args.refPSM is not None) and (os.path.split(name_calibr)[1].split('.')[0] not in name_psm):
         logging.warning('File names for angle score calibration don\'t match!')
@@ -662,35 +713,35 @@ def process_file(name_mzml, args):
     # build pictures
     if not args.sf:
         fig = plt.figure(figsize=(15, 40))
-    with plt_manager("ms1_ms2", (0, 0), (6, 2), False):
+    with plt_manager("ms1_ms2", (0, 0), False):
         ms1_f, ms2_f = ms1_ms2(starttime_ms1, starttime_ms2)
-    with plt_manager("aqtime", (0, 1), (6, 2), False):
+    with plt_manager("aqtime", (0, 1), False):
         aqtime(starttime_ms1, starttime_ms2)
 
-    with plt_manager("inten_prec", (1, 0), (6, 2), False):
+    with plt_manager("inten_prec", (1, 0), False):
         mean_prec_f, rsme_prec_f, std_prec_f = inten_prec(starttime_ms2, start, finish, prec_int, mult)
-    with plt_manager("monoisotopic_error", (1, 1), (6, 2), False):
+    with plt_manager("monoisotopic_error", (1, 1), False):
         MI_error_percent = monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult)
 
-    with plt_manager("it_ms1", (2, 0), (6, 2), True):
+    with plt_manager("it_ms1", (2, 0), True):
         mean_it_f, perc_95_it_f = it_ms1(starttime_ms1, injtime_ms1, start, finish, mult)
 
-    with plt_manager("it_ms2", (3, 0), (6, 2), True):
+    with plt_manager("it_ms2", (3, 0), True):
         it_ms2(starttime_ms2, start, finish, injtime_ms2)
 
-    with plt_manager("charge", (4, 0), (6, 2), True):
+    with plt_manager("charge", (4, 0), True):
         ch_state_numbers = charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2)
 
-    with plt_manager("realtop", (5, 0), (6, 2), False):
+    with plt_manager("realtop", (5, 0), False):
         fit_realtop = realtop(starttime_ms1, indexms1, start, finish, mult)
 
     if name_psm is not None:
         under, above, per_1_x, per_1_y, per, angle_y_mod, coef = angle_calculation(x, y, angle_x, angle_y, coef)
-        with plt_manager("angle", (5, 1), (6, 2), False):
+        with plt_manager("angle", (5, 1), False):
             angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef)
         median_peaks_ms2, median_intens_ms2 = None, None
     else:
-        with plt_manager("inten_number_peaks_ms1", (5, 1), (6, 2), False):
+        with plt_manager("inten_number_peaks_ms1", (5, 1), False):
             median_peaks_ms2, median_intens_ms2 = inten_number_peaks_ms1(angle_x, angle_y)
         per = None
 
@@ -709,45 +760,47 @@ def mult_process(name_files, args):
     for name_mzml in name_files:
         for value, value_list in zip(process_file(name_mzml, args), results_mult):
             value_list.append(value)
-    names_full = [os.path.split(x)[1].split('.')[0] for x in name_files]
-    names = name_red(names_full)
-    logging.info("Combine all together...")
-    #  build common pictures
-    f = plt.figure(figsize=(30, 40))
-    gs0 = gridspec.GridSpec(4, 2, figure=f)
-    graph_with_break(names, results_mult[0], results_mult[1], '# of MS1 scans', '# of MS/MS scans', '#scans, 10^3', 0,
-                     gs0, f)  # MS1/MS2 graph
-    gs01 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[1])
-    f.add_subplot(gs01[:, :])
-    it_ms1_mult(names, results_mult[2], results_mult[3])
-    prec_int_mult(names, [results_mult[4], results_mult[5], results_mult[6]], gs0, f)
-    charge_mult(names, results_mult[7], gs0, f)
-    gs12 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[4])
-    f.add_subplot(gs12[:, :])
-    real_top_mult(names, results_mult[8])
-
-    if set(results_mult[11]) == {None}:
-        gs22 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[5])
-        f.add_subplot(gs22[:, :])
-        simple_graph_mult(names, results_mult[9], 'median #peaks in MS/MS')
-        gs32 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[7])
-        f.add_subplot(gs32[:, :])
-        simple_graph_mult(names, results_mult[10], 'median intensity in MS/MS')
-    else:
-        gs22 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[5])
-        f.add_subplot(gs22[:, :])
-        simple_graph_mult(names, results_mult[11], 'Angle score')
-
-    gs31 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[6])
-    f.add_subplot(gs31[:, :])
-    simple_graph_mult(names, results_mult[12], 'Monoisotopic error, %')
-
+            
     if args.output is None:
         output = os.path.split(name_mzml)[0]
     else:
         output = args.output
     outname = os.path.join(output, 'Common_%i_files_viQC.%s' % (len(name_files), args.pic))
-    plt.savefig(outname)
+
+    names_full = [os.path.split(x)[1].split('.')[0] for x in name_files]
+    names = name_red(names_full)
+    logging.info("Combine all together...")
+    #  build common pictures
+    grid_manager = GridOrSaveContextConstructor(
+        args.sf, os.path.dirname(outname), grid_size=(4, 2),
+        figsize=((15, 10) if args.sf else(30, 40))
+    )
+    with grid_manager("N of MS scans", 0) as gm:
+        graph_with_break(names, results_mult[0], results_mult[1], '# of MS1 scans', '# of MS/MS scans', '#scans, 10^3', 0,
+                        gm.sps, gm.f)  # MS1/MS2 graph
+    with grid_manager("Injection time", 1) as gm:
+        it_ms1_mult(names, results_mult[2], results_mult[3], gm.sps, gm.f)
+    with grid_manager("Precursor intensity", 2) as gm:
+        prec_int_mult(names, [results_mult[4], results_mult[5], results_mult[6]], gm.sps, gm.f)
+    with grid_manager("N scans with such prec.", 3) as gm:
+        charge_mult(names, results_mult[7], gm.sps, gm.f)
+    with grid_manager("smooth topN", 4) as gm:
+        real_top_mult(names, results_mult[8], gm.sps, gm.f)
+
+    if set(results_mult[11]) == {None}:
+        with grid_manager("smooth topN", 5) as gm:
+            simple_graph_mult(names, results_mult[9], 'median #peaks in MS/MS', gm.sps, gm.f)
+        with grid_manager("smooth topN", 7) as gm:
+            simple_graph_mult(names, results_mult[10], 'median intensity in MS/MS', gm.sps, gm.f)
+    else:
+        with grid_manager("smooth topN", 5) as gm:
+            simple_graph_mult(names, results_mult[11], 'Angle score', gm.sps, gm.f)
+
+    with grid_manager("smooth topN", 6) as gm:
+        simple_graph_mult(names, results_mult[12], 'Monoisotopic error, %', gm.sps, gm.f)
+
+    if not args.sf:
+        grid_manager.f.savefig(outname)
 
     logging.info('Output common figure saved to %s', outname)
 
