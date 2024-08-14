@@ -6,7 +6,7 @@ viQC - Visual&Intuitive quality control for bottom-up proteomics experiments
 
 Requirements
 ------------
-- Python 2.7 or 3.x
+- Python 3.x
 - matplotlib
 - pyteomics
 - pandas
@@ -27,7 +27,7 @@ Before use
 ----------
 
 Convert your raw files to mzML format. [MSconvert](<http://proteowizard.sourceforge.net/projects.html>) can be used for this purpose.
-For the angle score calculation a list with PSMs is required (by default viQC works with [MPscore](<https://bitbucket.org/markmipt/mp-score>)/[Scavager](<https://bitbucket.org/markmipt/scavager>) results, but it can be changed by optional parameters). 
+For the angle score calculation a list with PSMs is required (by default viQC works with [MPscore](<https://bitbucket.org/markmipt/mp-score>)/[Scavager](<https://bitbucket.org/markmipt/scavager>) results, but it can be changed by optional parameters).
 
 For the additional information about viQC program and user cases check the [article](<https://link.springer.com/article/10.1134/S1061934819140119>); Russian speakers can enjoy the mother-tongue [version](<http://mass-spektrometria.ru/viqc-%D0%B1%D1%8B%D1%81%D1%82%D1%80%D1%8B%D0%B9-%D0%B8-%D0%BD%D0%B0%D0%B3%D0%BB%D1%8F%D0%B4%D0%BD%D1%8B%D0%B9-%D0%BA%D0%BE%D0%BD%D1%82%D1%80%D0%BE%D0%BB%D1%8C-%D0%BA%D0%B0%D1%87%D0%B5%D1%81%D1%82/>).
 
@@ -49,7 +49,7 @@ To run viQC:
 
 ``viQC input_mzML(s)``
 
-In case of multiple files, the program builds summarizing graphs as well as separate pictures for each analysis. For easier interpreting results start/stop parameters should be specified, otherwise, they will be calculated for each file separately and corresponding graphs (precursor intensity and MS/MS injection time) may not be comparable between files. 
+In case of multiple files, the program builds summarizing graphs as well as separate pictures for each analysis. For easier interpreting results start/stop parameters should be specified, otherwise, they will be calculated for each file separately and corresponding graphs (precursor intensity and MS/MS injection time) may not be comparable between files.
 
 For help on parameters:
 
