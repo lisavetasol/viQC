@@ -3,7 +3,8 @@ import matplotlib
 
 matplotlib.use('agg')
 import csv
-import pylab
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from pyteomics import mzml, mgf
 import seaborn as sns
 import pkg_resources
@@ -22,6 +23,94 @@ from collections import Counter
 from scipy.signal import find_peaks
 
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
+
+
+class PyplotContext:
+    def __init__(
+        self, separate_figures: bool,
+        wide_figure: bool = False, output_path=None,
+        grid_position=None, grid_size=None
+    ):
+        self.separate_figures = separate_figures
+        self.output_path = output_path
+        self.wide_figure = wide_figure
+        self.grid_position = grid_position
+        self.grid_size = grid_size
+
+    def __enter__(self):
+        if self.separate_figures:
+            figsize = ((15. if self.wide_figure else 7.5), 7.)
+            plt.figure(figsize=figsize)
+        else:
+            colspan = (2 if self.wide_figure else 1)
+            plt.subplot2grid(self.grid_size, self.grid_position, colspan=colspan)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.separate_figures:
+            plt.savefig(self.output_path)
+            plt.close()       
+
+
+class PyplotContextConstructor:
+    def __init__(self, separate_figures: bool = False, out_dir=None, grid_size=None) -> None:
+        self.separate_figures = separate_figures
+        self.out_dir = out_dir
+        self.grid_size = grid_size
+        if separate_figures and not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+
+    def __call__(self, name, grid_position=None, grid_size=None, wide_figure=False):
+        return PyplotContext(
+            separate_figures=self.separate_figures,
+            output_path=os.path.join(self.out_dir, f'{name}.png'),
+            grid_position=grid_position,
+            grid_size=self.grid_size,
+            wide_figure=wide_figure
+        )
+
+
+class GridOrSaveContext:
+    def __init__(
+        self, separate_figures: bool = False, out_path=None,
+        grid_position=0, gs0=None, f: Figure = None):
+        self.separate_figures = separate_figures
+        self.out_path = out_path
+        self.grid_position = grid_position
+        self.gs0 = gs0
+        self.f = f
+        self.sps = self.gs0[self.grid_position]
+
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.separate_figures:
+            self.f.savefig(self.out_path)
+            plt.close(self.f)
+
+
+class GridOrSaveContextConstructor:
+    def __init__(self, separate_figures: bool = False, out_dir=None, grid_size=None, figsize=None) -> None:
+        self.separate_figures = separate_figures
+        self.out_dir = out_dir
+        self.grid_size = grid_size
+        self.figsize = figsize
+        if separate_figures and not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        if not self.separate_figures:
+            self.f = plt.figure(figsize=figsize)
+            self.gs0 = gridspec.GridSpec(*self.grid_size, figure=self.f)
+
+    def __call__(self, name, grid_position=0):
+        f = (plt.figure(figsize=self.figsize) if self.separate_figures else self.f)
+        return GridOrSaveContext(
+            separate_figures=self.separate_figures,
+            out_path=os.path.join(self.out_dir, f'{name}.png'),
+            grid_position=(0 if self.separate_figures else grid_position),
+            gs0=(gridspec.GridSpec(1, 1, f) if self.separate_figures else self.gs0),
+            f=f
+        )
 
 
 def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
@@ -177,26 +266,26 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
 
 def ms1_ms2(starttime_ms1, starttime_ms2):
     if starttime_ms1 is None or starttime_ms2 is None:
-        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Start time information missing', ha='center')
         return None, None
     width = 0.5
     ms1 = starttime_ms1.size
     ms2 = starttime_ms2.size
-    pylab.bar([0], ms1, width, alpha=1, color=COLORS[0])
-    pylab.text(0, ms1 / 2, ms1, ha='center', fontsize=20)
-    pylab.bar([1], ms2, width, alpha=1, color=COLORS[1])
-    pylab.text(1, ms2 / 2, ms2, ha='center', fontsize=20)
-    pylab.xticks(np.arange(2))
+    plt.bar([0], ms1, width, alpha=1, color=COLORS[0])
+    plt.text(0, ms1 / 2, ms1, ha='center', fontsize=20)
+    plt.bar([1], ms2, width, alpha=1, color=COLORS[1])
+    plt.text(1, ms2 / 2, ms2, ha='center', fontsize=20)
+    plt.xticks(np.arange(2))
     xtick_marks = ['MS1', 'MS2']
-    _, xtick_names = pylab.xticks(np.arange(2), xtick_marks)
-    pylab.setp(xtick_names, rotation=0, fontsize=15)
-    pylab.title('MS1/MS2')
+    _, xtick_names = plt.xticks(np.arange(2), xtick_marks)
+    plt.setp(xtick_names, rotation=0, fontsize=15)
+    plt.title('MS1/MS2')
     return ms1, ms2
 
 
 def aqtime(starttime_ms1, starttime_ms2):
     if starttime_ms1 is None or starttime_ms2 is None:
-        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
 
     starttime_all = sorted([(x, 1) for x in starttime_ms1] + [(x, 2) for x in starttime_ms2])
@@ -208,27 +297,27 @@ def aqtime(starttime_ms1, starttime_ms2):
             aqtime_ms1.append(aq)
         if k[1] == 2:
             aqtime_ms2.append(aq)
-    pylab.hist(np.array(aqtime_ms1) * 60, histtype='step', lw=2, density=True,
+    plt.hist(np.array(aqtime_ms1) * 60, histtype='step', lw=2, density=True,
                label='MS1, sum=%.2f min' % sum(aqtime_ms1), color=COLORS[0])
-    pylab.hist(np.array(aqtime_ms2) * 60, histtype='step', lw=2, density=True,
+    plt.hist(np.array(aqtime_ms2) * 60, histtype='step', lw=2, density=True,
                label='MS2, sum=%.2f min' % sum(aqtime_ms2), color=COLORS[1])
-    pylab.legend(loc=1, fontsize=12)
-    pylab.xlabel("AT, sec", fontsize=15)
-    pylab.ylabel("# of spectra, normalized", fontsize=15)
-    pylab.title('Acquisition time')
+    plt.legend(loc=1, fontsize=12)
+    plt.xlabel("AT, sec", fontsize=15)
+    plt.ylabel("# of spectra, normalized", fontsize=15)
+    plt.title('Acquisition time')
 
 
 def it_ms1(starttime_ms1, injtime_ms1, start, finish, mult):
     if starttime_ms1 is None:
-        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Start time information missing', ha='center')
         return None, None
     if injtime_ms1 is None:
-        pylab.text(0.5, 0.5, 'Injection time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Injection time information missing', ha='center')
         return None, None
-    pylab.scatter(starttime_ms1, injtime_ms1, s=10, alpha=0.7, color=COLORS[0])
-    pylab.xlabel("Start time, min", fontsize=15)
-    pylab.ylabel("Injection time, ms", fontsize=15)
-    pylab.title('MS1')
+    plt.scatter(starttime_ms1, injtime_ms1, s=10, alpha=0.7, color=COLORS[0])
+    plt.xlabel("Start time, min", fontsize=15)
+    plt.ylabel("Injection time, ms", fontsize=15)
+    plt.title('MS1')
     if mult:
         ind = np.logical_and(np.array(starttime_ms1) > start, np.array(starttime_ms1) < finish)
         mean = np.mean(np.array(injtime_ms1)[ind])
@@ -244,7 +333,7 @@ def it_ms1(starttime_ms1, injtime_ms1, start, finish, mult):
 
 def monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult):
     if set(prec_isolated_mz) == {None}:
-        pylab.text(0.5, 0.5, 'Prec. isolation m/z information missing', ha='center')
+        plt.text(0.5, 0.5, 'Prec. isolation m/z information missing', ha='center')
         return None, None, None
 
     mask = [i != 0 for i in charge_ms2]
@@ -254,15 +343,15 @@ def monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult):
     ch = np.array(charge_ms2)[mask]
     diff = (isolated - mono) * ch
 
-    pylab.hist(np.round(diff, 0), bins=np.arange(-0.25, 5, 1), width=0.5, align='mid', color=COLORS[2])
+    plt.hist(np.round(diff, 0), bins=np.arange(-0.25, 5, 1), width=0.5, align='mid', color=COLORS[2])
     a, b = np.histogram(diff, bins=np.arange(-0.25, 5, 1))
     mod = 100 * sum(a[1:3]) / a[0]
     t = str(int(mod)) + '% $1^{st}$ and $2^{nd}$ isotopes \n' + str(zeros) + ' prec. with zero charges'
-    ax = pylab.gca()
-    pylab.text(0.7, 0.9, t, ha='center', va='center', transform=ax.transAxes)
-    pylab.title('Monoisotopic error')
-    pylab.ylabel('# scans')
-    pylab.xlabel('Isolated - Mono, Da')
+    ax = plt.gca()
+    plt.text(0.7, 0.9, t, ha='center', va='center', transform=ax.transAxes)
+    plt.title('Monoisotopic error')
+    plt.ylabel('# scans')
+    plt.xlabel('Isolated - Mono, Da')
     if mult:
         return mod
 
@@ -270,10 +359,10 @@ def monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult):
 def inten_prec(starttime_ms2, start, finish, prec_int, mult):
     logging.debug('inten_prec received arguments: %s, %s, %s, %s, %s', starttime_ms2, start, finish, prec_int, mult)
     if starttime_ms2 is None:
-        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Start time information missing', ha='center')
         return None, None, None
     if set(prec_int) == {None}:
-        pylab.text(0.5, 0.5, 'Prec_intensity information missing', ha='center')
+        plt.text(0.5, 0.5, 'Prec_intensity information missing', ha='center')
         return None, None, None
     ind = np.logical_and(starttime_ms2 > start, starttime_ms2 < finish)
     prec = np.array(prec_int, dtype=float)[ind]
@@ -289,59 +378,59 @@ def inten_prec(starttime_ms2, start, finish, prec_int, mult):
         def gaussian(x, a, x0, sigma):
             return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
 
-        counts, bins, bars = pylab.hist(prec, bins=np.linspace(0, max(prec), 100), density=True, color=COLORS[0],
+        counts, bins, bars = plt.hist(prec, bins=np.linspace(0, max(prec), 100), density=True, color=COLORS[0],
                                         alpha=0.5, lw=1, edgecolor='k')
         popt, pcov = optimize.curve_fit(gaussian, bins[:-1], counts, bounds=(0, np.nanmax(prec)))
         x = np.linspace(0, max(prec), 100)
         y = norm.pdf(x, popt[1], popt[2])
-        pylab.plot(x, gaussian(x, *popt), color='black')
-        pylab.xlim(np.nanpercentile(prec, 0.1) - 1, np.nanpercentile(prec, 99.9) + 1)
-        pylab.ylabel("# of spectra, normalized", fontsize=15)
-        pylab.xlabel("Log10(intensity)", fontsize=15)
-        pylab.title('Intensity of precursor ions')
+        plt.plot(x, gaussian(x, *popt), color='black')
+        plt.xlim(np.nanpercentile(prec, 0.1) - 1, np.nanpercentile(prec, 99.9) + 1)
+        plt.ylabel("# of spectra, normalized", fontsize=15)
+        plt.xlabel("Log10(intensity)", fontsize=15)
+        plt.title('Intensity of precursor ions')
         rsme = mean_squared_error(y[:-1], counts)
         return np.mean(prec), rsme, popt[2]
     else:
         a = np.nanpercentile(prec, 0.1)
         b = np.nanpercentile(prec, 99.9)
         logging.debug('a = %s, b = %s', a, b)
-        pylab.hist(prec, bins=np.linspace(0, max(prec), 100), color=COLORS[0], alpha=0.5, lw=1, edgecolor='k')
-        pylab.xlim(a, b)
-        pylab.ylabel("# of spectra", fontsize=15)
-        pylab.xlabel("Log10(intensity)", fontsize=15)
-        pylab.title('Intensity of precursor ions')
+        plt.hist(prec, bins=np.linspace(0, max(prec), 100), color=COLORS[0], alpha=0.5, lw=1, edgecolor='k')
+        plt.xlim(a, b)
+        plt.ylabel("# of spectra", fontsize=15)
+        plt.xlabel("Log10(intensity)", fontsize=15)
+        plt.title('Intensity of precursor ions')
         return None, None, None
 
 
 def it_ms2(starttime_ms2, start, finish, injtime_ms2):
     if starttime_ms2 is None:
-        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
     if injtime_ms2 is None:
-        pylab.text(0.5, 0.5, 'Injection time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Injection time information missing', ha='center')
         return
     ind = np.logical_and(starttime_ms2 > start, starttime_ms2 < finish)
-    pylab.hist(np.array(injtime_ms2)[ind], bins=np.linspace(0, max(injtime_ms2), 100),
+    plt.hist(np.array(injtime_ms2)[ind], bins=np.linspace(0, max(injtime_ms2), 100),
                color=COLORS[1], alpha=0.5, lw=1, edgecolor='k')
-    pylab.xlabel("Injection time, ms", fontsize=15)
-    pylab.ylabel("# of spectra", fontsize=15)
-    pylab.title('MS2 injection time')
+    plt.xlabel("Injection time, ms", fontsize=15)
+    plt.ylabel("# of spectra", fontsize=15)
+    plt.title('MS2 injection time')
 
 
 def realtop(starttime_ms1, indexms1, start, finish, mult):
     if starttime_ms1 is None:
-        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
-    pylab.scatter(starttime_ms1[:-1], np.ediff1d(indexms1) - 1, alpha=0.7, s=15,
+    plt.scatter(starttime_ms1[:-1], np.ediff1d(indexms1) - 1, alpha=0.7, s=15,
                   label='TopN', color=COLORS[1])
     fit = lowess(np.ediff1d(indexms1) - 1, starttime_ms1[:-1], frac=0.05, it=0)
-    pylab.plot(fit[:, 0], fit[:, 1], "r-", label='Average TopN')
-    pylab.ylim(0, max(np.ediff1d(indexms1)) * 1.1)
-    pylab.xlim(starttime_ms1.min() * .95, starttime_ms1.max() * 1.07)
-    pylab.legend(loc=1, markerscale=2, fontsize=15)
-    pylab.xlabel('RT, min', fontsize=15)
-    pylab.ylabel('TopN', fontsize=15)
-    pylab.title('Real TopN', fontsize=15)
+    plt.plot(fit[:, 0], fit[:, 1], "r-", label='Average TopN')
+    plt.ylim(0, max(np.ediff1d(indexms1)) * 1.1)
+    plt.xlim(starttime_ms1.min() * .95, starttime_ms1.max() * 1.07)
+    plt.legend(loc=1, markerscale=2, fontsize=15)
+    plt.xlabel('RT, min', fontsize=15)
+    plt.ylabel('TopN', fontsize=15)
+    plt.title('Real TopN', fontsize=15)
 
     if mult:
         indexms1 = np.array(indexms1)
@@ -354,21 +443,21 @@ def realtop(starttime_ms1, indexms1, start, finish, mult):
 def charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2):
     ch_scans = []
     if starttime_ms2 is None:
-        pylab.text(0.5, 0.5, 'Start time information missing', ha='center')
+        plt.text(0.5, 0.5, 'Start time information missing', ha='center')
         return
     for i in range(0, maxcharge + 1):
         charge_ms2 = np.array(charge_ms2)
         starttime_ms2 = np.array(starttime_ms2)
         mz_ms2 = np.array(mz_ms2)
         msk = [k == i for k in charge_ms2]
-        pylab.scatter(np.array(starttime_ms2)[msk], np.array(mz_ms2)[msk],
+        plt.scatter(np.array(starttime_ms2)[msk], np.array(mz_ms2)[msk],
                       s=20, alpha=0.5, color=COLORS[i - 1],
                       label='charge_%s+(%i scans)' % (i, len(np.array(mz_ms2)[msk])))
         ch_scans.append(len(np.array(mz_ms2)[msk]))
-        pylab.title('Precursor ions', fontsize=15)
-        pylab.legend(markerscale=1.5, fontsize=15, facecolor='white')
-        pylab.xlabel('RT, min', fontsize=15)
-        pylab.ylabel('m/z', fontsize=15)
+        plt.title('Precursor ions', fontsize=15)
+        plt.legend(markerscale=1.5, fontsize=15, facecolor='white')
+        plt.xlabel('RT, min', fontsize=15)
+        plt.ylabel('m/z', fontsize=15)
     return ch_scans
 
 
@@ -415,26 +504,26 @@ def angle_calculation(x, y, angle_x, angle_y, coef):
 def angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef):
     a = np.arange(per_1_x, max(angle_x), 100.)
     b = under * (a - per_1_x) + per_1_y
-    pylab.plot(a, b, color='black')
+    plt.plot(a, b, color='black')
     c = above * (a - per_1_x) + per_1_y
-    pylab.plot(a, c, color='black')
-    pylab.scatter(angle_x, angle_y_mod, alpha=0.5, color=COLORS[1], label='score=%.2f' % per)
-    pylab.xlim(0, np.percentile(angle_x, 99.5))
-    pylab.ylim(0, np.percentile(angle_y_mod, 99.5))
-    pylab.xlabel('# peaks', fontsize=15)
-    pylab.legend(fontsize=15, loc=1)
-    pylab.ylabel('avg intensity, 10^%i' % np.log10(coef), fontsize=15)
+    plt.plot(a, c, color='black')
+    plt.scatter(angle_x, angle_y_mod, alpha=0.5, color=COLORS[1], label='score=%.2f' % per)
+    plt.xlim(0, np.percentile(angle_x, 99.5))
+    plt.ylim(0, np.percentile(angle_y_mod, 99.5))
+    plt.xlabel('# peaks', fontsize=15)
+    plt.legend(fontsize=15, loc=1)
+    plt.ylabel('avg intensity, 10^%i' % np.log10(coef), fontsize=15)
 
 
 def inten_number_peaks_ms1(angle_x, angle_y):
     coef = 10 ** (len(str(int(np.mean(angle_y)))) - 1)
     angle_y_mod = np.array(angle_y) / coef
-    pylab.scatter(angle_x, angle_y_mod, alpha=0.5, color=COLORS[1])
-    pylab.xlim(0, np.percentile(angle_x, 99.5))
-    pylab.ylim(0, np.percentile(angle_y_mod, 99.5))
-    pylab.xlabel('# peaks', fontsize=15)
-    pylab.ylabel('avg intensity, 10^%i' % np.log10(coef), fontsize=15)
-    pylab.title('MS/MS', fontsize=15)
+    plt.scatter(angle_x, angle_y_mod, alpha=0.5, color=COLORS[1])
+    plt.xlim(0, np.percentile(angle_x, 99.5))
+    plt.ylim(0, np.percentile(angle_y_mod, 99.5))
+    plt.xlabel('# peaks', fontsize=15)
+    plt.ylabel('avg intensity, 10^%i' % np.log10(coef), fontsize=15)
+    plt.title('MS/MS', fontsize=15)
     return np.nanmedian(angle_x), np.nanmedian(angle_y)
 
 
@@ -472,14 +561,15 @@ def start_finish(indexms1, starttime_ms1):
     return start, finish
 
 
-def graph_with_break(names, ms1, ms2, title1, title2, ytitle, n, gs0, f):
-    gs00 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs0[n])
+def graph_with_break(names, ms1, ms2, title1, title2, ytitle, sps, f: Figure):
+    '''gs0[0]'''
+    gs00 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=sps)
     n_files = len(names)
     ms1 = np.true_divide(ms1, 1000)
     ms2 = np.true_divide(ms2, 1000)
     ax2 = f.add_subplot(gs00[:-1, -1])
     ax1 = f.add_subplot(gs00[-1, -1])
-    #     f, (ax2, ax1) = pylab.subplots(2, 1, sharex=True)
+    #     f, (ax2, ax1) = plt.subplots(2, 1, sharex=True)
     a = np.arange(0, n_files)
     ax1.plot(a, ms1, 'o:', color=COLORS[0], label='MS1')
     ax2.plot(a, ms2, 'o:', color=COLORS[1], label='MS2')
@@ -493,7 +583,7 @@ def graph_with_break(names, ms1, ms2, title1, title2, ytitle, n, gs0, f):
     ax2.xaxis.tick_top()
     ax2.tick_params(labeltop=False)
     ax1.xaxis.tick_bottom()
-    pylab.xticks(a, names, rotation=60)
+    plt.xticks(a, names, rotation=60)
     d = .015
     kwargs = dict(transform=ax2.transAxes, color='k', clip_on=False)
     ax2.plot((-d, +d), (-d, +d), **kwargs)
@@ -503,22 +593,25 @@ def graph_with_break(names, ms1, ms2, title1, title2, ytitle, n, gs0, f):
     ax1.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)
 
 
-def it_ms1_mult(names, mean_it_ms1, perc_95):
+def it_ms1_mult(names, mean_it_ms1, perc_95, sps, f: Figure):
     n_files = len(names)
     a = np.arange(0, n_files)
-    pylab.errorbar(a, mean_it_ms1, perc_95, linestyle='None', capsize=10, fmt='-o', color=COLORS[0], ecolor='black',
+    g00 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=sps)
+    ax = f.add_subplot(g00[:, :])
+    ax.errorbar(a, mean_it_ms1, perc_95, linestyle='None', capsize=10, fmt='-o', color=COLORS[0], ecolor='black',
                    elinewidth=1)
-    pylab.xticks(np.arange(n_files), names, rotation=60, fontsize=15)
-    pylab.ylim(min(np.array(mean_it_ms1) - np.array(perc_95)) - 1, max(np.array(mean_it_ms1) + np.array(perc_95)) + 1)
-    #pylab.legend(loc=1, fontsize=15)
-    pylab.ylabel('Injection time, ms', fontsize=15)
-    pylab.title('Mean IT MS1, 95th percentile')
+    ax.set_xticks(np.arange(n_files), names, rotation=60, fontsize=15)
+    ax.set_ylim(min(np.array(mean_it_ms1) - np.array(perc_95)) - 1, max(np.array(mean_it_ms1) + np.array(perc_95)) + 1)
+    #ax.legend(loc=1, fontsize=15)
+    ax.set_ylabel('Injection time, ms', fontsize=15)
+    ax.set_title('Mean IT MS1, 95th percentile')
 
 
-def prec_int_mult(names, input_data, gs0, f):
+def prec_int_mult(names, input_data, sps, f: Figure):
+    '''gs0[2]'''
     input_names = ['mean', 'rsme', 'std']
     a = np.arange(0, len(names))
-    gs11 = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs0[2])
+    gs11 = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=sps)
     for i in range(3):
         ax = f.add_subplot(gs11[i, :])
         ax.plot(a, input_data[i], 'o:', color=COLORS[i], label=input_names[i])
@@ -528,14 +621,14 @@ def prec_int_mult(names, input_data, gs0, f):
         ax.tick_params(axis='x', colors='w')
         if i == 0:
             ax.set_title('Precursor intensity')
-    pylab.xticks(np.arange(len(names)), names, rotation=60, color='black')
+    plt.xticks(np.arange(len(names)), names, rotation=60, color='black')
 
 
-def charge_mult(names, ch_scans, gs0, f):
+def charge_mult(names, ch_scans, sps, f: Figure):
     pad = len(max(ch_scans, key=len))
     charges = np.array([i + [0] * (pad - len(i)) for i in ch_scans])
     msk = ~np.all(charges == 0, axis=0)
-    gs00 = gridspec.GridSpecFromSubplotSpec(msk.sum(), 1, subplot_spec=gs0[3])
+    gs00 = gridspec.GridSpecFromSubplotSpec(msk.sum(), 1, subplot_spec=sps)
     for i, j in zip(np.arange(msk.sum()), np.arange(pad)[msk]):
         a = np.arange(0, len(names))
         ch_state = charges[:, j]
@@ -546,24 +639,28 @@ def charge_mult(names, ch_scans, gs0, f):
         ax.tick_params(axis='x', colors='w')
         if i == 0:
             ax.set_title('#scans with such prec.')
-    pylab.xticks(np.arange(len(names)), names, rotation=60, color='black')
+    plt.xticks(np.arange(len(names)), names, rotation=60, color='black')
 
 
-def real_top_mult(names, fit):
+def real_top_mult(names, fit, sps, f: Figure):
     n_files = len(names)
-    sns.boxplot(data = fit, orient='v', color=COLORS[2], whis=1, notch=False)
-    pylab.xticks(np.arange(n_files), names, rotation=60)
-    pylab.ylabel('smooth topN')
+    gs00 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=sps)
+    ax = f.add_subplot(gs00[:, :])
+    sns.boxplot(data = fit, orient='v', color=COLORS[2], whis=1, notch=False, ax=ax)
+    ax.set_xticks(np.arange(n_files), names, rotation=60)
+    ax.set_ylabel('smooth topN')
 
 
-def simple_graph_mult(names, values, title):
+def simple_graph_mult(names, values, title, sps, f: Figure):
     a = range(len(names))
-    pylab.plot(a, values, 'o:', color=COLORS[3])
-    pylab.title(title)
+    gs00 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=sps)
+    ax = f.add_subplot(gs00[:, :])
+    ax.plot(a, values, 'o:', color=COLORS[3])
+    ax.set_title(title)
     r = (max(values) - min(values)) / 10
-    pylab.ylim(min(values) - r, max(values) + r)
-    pylab.xticks(a, names, rotation=60)
-    #pylab.legend()
+    ax.set_ylim(min(values) - r, max(values) + r)
+    ax.set_xticks(a, names, rotation=60)
+    #plt.legend()
 
 
 def process_file(name_mzml, args):
@@ -579,12 +676,14 @@ def process_file(name_mzml, args):
     if (args.refPSM is None) + (args.refFile is None) == 1:
         logging.error('Not enough files for angle score calculation provided, skipping angle score.')
 
+
     name = os.path.split(name_mzml)[1].split('.')[0]
     name_psm = args.refPSM
     name_calibr = args.refFile
     extension = os.path.split(name_calibr)[1].split('.')[1] if name_calibr else None
     delim = str(args.d)
     colname = str(args.cn)
+    plt_manager = PyplotContextConstructor(args.sf, os.path.join(output, name + '_viQC'), grid_size=(6,2))
 
     if (args.refPSM is not None) and (os.path.split(name_calibr)[1].split('.')[0] not in name_psm):
         logging.warning('File names for angle score calibration don\'t match!')
@@ -608,52 +707,54 @@ def process_file(name_mzml, args):
         maxcharge = args.charge
 
     # for pretty pictures
-    pylab.style.use('seaborn-whitegrid')
-    pylab.rcParams['ytick.labelsize'] = 15
-    pylab.rcParams['xtick.labelsize'] = 15
-    pylab.rcParams['axes.titlesize'] = 15
-    pylab.rcParams['axes.titlesize'] = 15
-    pylab.rcParams['font.size'] = 15
+    plt.style.use('seaborn-v0_8-whitegrid')
+    plt.rcParams['ytick.labelsize'] = 15
+    plt.rcParams['xtick.labelsize'] = 15
+    plt.rcParams['axes.titlesize'] = 15
+    plt.rcParams['axes.titlesize'] = 15
+    plt.rcParams['font.size'] = 15
 
     # build pictures
-    fig = pylab.figure(figsize=(15, 40))
-    pylab.subplot2grid((6, 2), (0, 0))
-    ms1_f, ms2_f = ms1_ms2(starttime_ms1, starttime_ms2)
-    pylab.subplot2grid((6, 2), (0, 1))
-    aqtime(starttime_ms1, starttime_ms2)
+    if not args.sf:
+        fig = plt.figure(figsize=(15, 40))
+    with plt_manager("ms1_ms2", (0, 0), False):
+        ms1_f, ms2_f = ms1_ms2(starttime_ms1, starttime_ms2)
+    with plt_manager("aqtime", (0, 1), False):
+        aqtime(starttime_ms1, starttime_ms2)
 
-    pylab.subplot2grid((6, 2), (1, 0))
-    mean_prec_f, rsme_prec_f, std_prec_f = inten_prec(starttime_ms2, start, finish, prec_int, mult)
-    pylab.subplot2grid((6, 2), (1, 1))
-    MI_error_percent = monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult)
+    with plt_manager("inten_prec", (1, 0), False):
+        mean_prec_f, rsme_prec_f, std_prec_f = inten_prec(starttime_ms2, start, finish, prec_int, mult)
+    with plt_manager("monoisotopic_error", (1, 1), False):
+        MI_error_percent = monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult)
 
-    pylab.subplot2grid((6, 2), (2, 0), colspan=2)
-    mean_it_f, perc_95_it_f = it_ms1(starttime_ms1, injtime_ms1, start, finish, mult)
+    with plt_manager("it_ms1", (2, 0), True):
+        mean_it_f, perc_95_it_f = it_ms1(starttime_ms1, injtime_ms1, start, finish, mult)
 
-    pylab.subplot2grid((6, 2), (3, 0), colspan=2)
-    it_ms2(starttime_ms2, start, finish, injtime_ms2)
+    with plt_manager("it_ms2", (3, 0), True):
+        it_ms2(starttime_ms2, start, finish, injtime_ms2)
 
-    pylab.subplot2grid((6, 2), (4, 0), colspan=2)
-    ch_state_numbers = charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2)
+    with plt_manager("charge", (4, 0), True):
+        ch_state_numbers = charge(maxcharge, charge_ms2, starttime_ms2, mz_ms2)
 
-    pylab.subplot2grid((6, 2), (5, 0))
-    fit_realtop = realtop(starttime_ms1, indexms1, start, finish, mult)
+    with plt_manager("realtop", (5, 0), False):
+        fit_realtop = realtop(starttime_ms1, indexms1, start, finish, mult)
 
     if name_psm is not None:
         under, above, per_1_x, per_1_y, per, angle_y_mod, coef = angle_calculation(x, y, angle_x, angle_y, coef)
-        pylab.subplot2grid((6, 2), (5, 1))
-        angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef)
+        with plt_manager("angle", (5, 1), False):
+            angle(under, above, per_1_x, per_1_y, per, angle_x, angle_y_mod, coef)
         median_peaks_ms2, median_intens_ms2 = None, None
     else:
-        pylab.subplot2grid((6, 2), (5, 1))
-        median_peaks_ms2, median_intens_ms2 = inten_number_peaks_ms1(angle_x, angle_y)
+        with plt_manager("inten_number_peaks_ms1", (5, 1), False):
+            median_peaks_ms2, median_intens_ms2 = inten_number_peaks_ms1(angle_x, angle_y)
         per = None
 
     outname = os.path.join(output, name + '_viQC.%s' % args.pic)
-    pylab.savefig(outname)
-    # outname = os.path.join(output, name + '_viQC.svg')
-    # pylab.savefig(outname)
-    pylab.close(fig)
+    if not args.sf:
+        plt.savefig(outname)
+        # outname = os.path.join(output, name + '_viQC.svg')
+        # plt.savefig(outname)
+        plt.close(fig)
     logging.info("Calculating metrics for %s", name)
     return ms1_f, ms2_f, mean_it_f, perc_95_it_f, mean_prec_f, rsme_prec_f, std_prec_f, ch_state_numbers, fit_realtop, median_peaks_ms2, median_intens_ms2, per, MI_error_percent
 
@@ -663,45 +764,47 @@ def mult_process(name_files, args):
     for name_mzml in name_files:
         for value, value_list in zip(process_file(name_mzml, args), results_mult):
             value_list.append(value)
-    names_full = [os.path.split(x)[1].split('.')[0] for x in name_files]
-    names = name_red(names_full)
-    logging.info("Combine all together...")
-    #  build common pictures
-    f = pylab.figure(figsize=(30, 40))
-    gs0 = gridspec.GridSpec(4, 2, figure=f)
-    graph_with_break(names, results_mult[0], results_mult[1], '# of MS1 scans', '# of MS/MS scans', '#scans, 10^3', 0,
-                     gs0, f)  # MS1/MS2 graph
-    gs01 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[1])
-    f.add_subplot(gs01[:, :])
-    it_ms1_mult(names, results_mult[2], results_mult[3])
-    prec_int_mult(names, [results_mult[4], results_mult[5], results_mult[6]], gs0, f)
-    charge_mult(names, results_mult[7], gs0, f)
-    gs12 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[4])
-    f.add_subplot(gs12[:, :])
-    real_top_mult(names, results_mult[8])
-
-    if set(results_mult[11]) == {None}:
-        gs22 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[5])
-        f.add_subplot(gs22[:, :])
-        simple_graph_mult(names, results_mult[9], 'median #peaks in MS/MS')
-        gs32 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[7])
-        f.add_subplot(gs32[:, :])
-        simple_graph_mult(names, results_mult[10], 'median intensity in MS/MS')
-    else:
-        gs22 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[5])
-        f.add_subplot(gs22[:, :])
-        simple_graph_mult(names, results_mult[11], 'Angle score')
-
-    gs31 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=gs0[6])
-    f.add_subplot(gs31[:, :])
-    simple_graph_mult(names, results_mult[12], 'Monoisotopic error, %')
-
+            
     if args.output is None:
         output = os.path.split(name_mzml)[0]
     else:
         output = args.output
     outname = os.path.join(output, 'Common_%i_files_viQC.%s' % (len(name_files), args.pic))
-    pylab.savefig(outname)
+
+    names_full = [os.path.split(x)[1].split('.')[0] for x in name_files]
+    names = name_red(names_full)
+    logging.info("Combine all together...")
+    #  build common pictures
+    grid_manager = GridOrSaveContextConstructor(
+        args.sf, os.path.splitext(outname)[0], grid_size=(4, 2),
+        figsize=((15, 10) if args.sf else(30, 40))
+    )
+    with grid_manager("N of MS scans", 0) as gm:
+        graph_with_break(names, results_mult[0], results_mult[1], '# of MS1 scans', '# of MS/MS scans', '#scans, 10^3',
+                        gm.sps, gm.f)  # MS1/MS2 graph
+    with grid_manager("Injection time", 1) as gm:
+        it_ms1_mult(names, results_mult[2], results_mult[3], gm.sps, gm.f)
+    with grid_manager("Precursor intensity", 2) as gm:
+        prec_int_mult(names, [results_mult[4], results_mult[5], results_mult[6]], gm.sps, gm.f)
+    with grid_manager("N scans with such prec.", 3) as gm:
+        charge_mult(names, results_mult[7], gm.sps, gm.f)
+    with grid_manager("smooth topN", 4) as gm:
+        real_top_mult(names, results_mult[8], gm.sps, gm.f)
+
+    if set(results_mult[11]) == {None}:
+        with grid_manager("smooth topN", 5) as gm:
+            simple_graph_mult(names, results_mult[9], 'median #peaks in MS/MS', gm.sps, gm.f)
+        with grid_manager("smooth topN", 7) as gm:
+            simple_graph_mult(names, results_mult[10], 'median intensity in MS/MS', gm.sps, gm.f)
+    else:
+        with grid_manager("smooth topN", 5) as gm:
+            simple_graph_mult(names, results_mult[11], 'Angle score', gm.sps, gm.f)
+
+    with grid_manager("smooth topN", 6) as gm:
+        simple_graph_mult(names, results_mult[12], 'Monoisotopic error, %', gm.sps, gm.f)
+
+    if not args.sf:
+        grid_manager.f.savefig(outname)
 
     logging.info('Output common figure saved to %s', outname)
 
@@ -744,6 +847,8 @@ def main():
                              'maximum analysis time is used')
     parser.add_argument('-charge', type=int,
                         help='max charge of precursor ions. By default, all charges are considered')
+    parser.add_argument('-sf', '--separate-figures', action='store_true',
+                        help='save figures as separate files', dest="sf")
     parser.add_argument('-pic',
                         help='the output figure type (png or svg for vector graphic). Default png',
                         default='png')
