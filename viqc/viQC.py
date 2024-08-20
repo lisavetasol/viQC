@@ -24,6 +24,8 @@ from scipy.signal import find_peaks
 
 COLORS = ["#b84c7d", "#4d8ac9", "#4bc490", "#7f63b8", "b", "g", '#edd630'] + ['k'] * 50
 
+logger = logging.getLogger(__name__)
+
 
 class PyplotContext:
     def __init__(
@@ -49,7 +51,7 @@ class PyplotContext:
     def __exit__(self, exc_type, exc_value, traceback):
         if self.separate_figures:
             plt.savefig(self.output_path)
-            plt.close()       
+            plt.close()
 
 
 class PyplotContextConstructor:
@@ -83,7 +85,7 @@ class GridOrSaveContext:
 
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_value, traceback):
         if self.separate_figures:
             self.f.savefig(self.out_path)
@@ -115,7 +117,7 @@ class GridOrSaveContextConstructor:
 
 def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
     name = os.path.split(name_mzml)[1].split('.')[0]
-    logging.info('Reading data for %s... ' % name)
+    logger.info('Reading data for %s... ' % name)
     injtime_ms1 = []
     injtime_ms2 = []
     starttime_ms1 = []
@@ -201,19 +203,19 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
             if uinfo == 'second':
                 arr /= 60.
             elif uinfo != 'minute':
-                logging.warning('Unexpected unit: %s', uinfo)
+                logger.warning('Unexpected unit: %s', uinfo)
             return arr
 
-    logging.debug('starttime_ms1: %s', starttime_ms1)
+    logger.debug('starttime_ms1: %s', starttime_ms1)
     starttime_ms1 = convert_times(starttime_ms1)
-    logging.debug('starttime_ms1: %s', starttime_ms1)
+    logger.debug('starttime_ms1: %s', starttime_ms1)
     starttime_ms2 = convert_times(starttime_ms2)
 
     coef = 10 ** (len(str(int(np.mean(angle_y)))) - 1)
 
     # read_for_angle_calibration
     if name_psm is not None:
-        logging.info('Reading reference files for angle score calculation...')
+        logger.info('Reading reference files for angle score calculation...')
         d = {'mgf': mgf.IndexedMGF, 'mzml': mzml.MzML}
         reader = d[extension.lower()]
         f = reader(name_calibration)
@@ -232,7 +234,7 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
                     match = True
                 else:
                     if extension.lower() == 'mgf':
-                        logging.info('Cannot match spectrum names, please check RefFile name for spaces')
+                        logger.info('Cannot match spectrum names, please check RefFile name for spaces')
                         f_split = dict()
                         for k in f.index.keys():
                             f_split[k.split(' ')[0]] = f[k]
@@ -256,10 +258,10 @@ def read_data(name_mzml, name_calibration, extension, name_psm, delim, colname):
         coef = 10 ** (len(str(int(np.mean(y)))) - 1)
         y = np.array(y) / coef
     prec_without_intense = round (100 * prec_int.count(None) / len(prec_int), 2)
-    logging.info('Reading is complete.')
+    logger.info('Reading is complete.')
     for error in errors:
-        logging.warning('There was an error extracting %s information. Some figures will not be produced.', error)
-        logging.info('%s %% of precursor ions have no intensity information', prec_without_intense)
+        logger.warning('There was an error extracting %s information. Some figures will not be produced.', error)
+        logger.info('%s %% of precursor ions have no intensity information', prec_without_intense)
     return (injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2,
             mz_ms2, angle_x, angle_y, prec_int, prec_isolated_mz, x, y, coef)
 
@@ -357,7 +359,7 @@ def monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult):
 
 
 def inten_prec(starttime_ms2, start, finish, prec_int, mult):
-    logging.debug('inten_prec received arguments: %s, %s, %s, %s, %s', starttime_ms2, start, finish, prec_int, mult)
+    logger.debug('inten_prec received arguments: %s, %s, %s, %s, %s', starttime_ms2, start, finish, prec_int, mult)
     if starttime_ms2 is None:
         plt.text(0.5, 0.5, 'Start time information missing', ha='center')
         return None, None, None
@@ -367,12 +369,12 @@ def inten_prec(starttime_ms2, start, finish, prec_int, mult):
     ind = np.logical_and(starttime_ms2 > start, starttime_ms2 < finish)
     prec = np.array(prec_int, dtype=float)[ind]
     non0 = (prec > 0)
-    logging.debug('%d of %d precursors have zero intensity, excluding them from analysis.',
+    logger.debug('%d of %d precursors have zero intensity, excluding them from analysis.',
         prec.size - non0.sum(), prec.size)
 
     prec = np.log10(prec[(~np.isnan(prec)) & non0])
-    logging.debug('prec: %s', prec)
-    logging.debug('prec min: %s, prec max: %s', prec.min(), prec.max())
+    logger.debug('prec: %s', prec)
+    logger.debug('prec min: %s, prec max: %s', prec.min(), prec.max())
 
     if mult:
         def gaussian(x, a, x0, sigma):
@@ -393,7 +395,7 @@ def inten_prec(starttime_ms2, start, finish, prec_int, mult):
     else:
         a = np.nanpercentile(prec, 0.1)
         b = np.nanpercentile(prec, 99.9)
-        logging.debug('a = %s, b = %s', a, b)
+        logger.debug('a = %s, b = %s', a, b)
         plt.hist(prec, bins=np.linspace(0, max(prec), 100), color=COLORS[0], alpha=0.5, lw=1, edgecolor='k')
         plt.xlim(a, b)
         plt.ylabel("# of spectra", fontsize=15)
@@ -550,13 +552,13 @@ def start_finish(indexms1, starttime_ms1):
         start = fit[:, 0][deriv.argmax()] + max(starttime_ms1) / 50
     else:
         start = min(starttime_ms1)
-        logging.info('Cannot find start time, use %.2f', start)
+        logger.info('Cannot find start time, use %.2f', start)
 
     if deriv.argmin() in great_peaks_neg:
         finish = fit[:, 0][deriv.argmin()] - max(starttime_ms1) / 50
     else:
         finish = max(starttime_ms1)
-        logging.info('Cannot find stop time, use %.2f', finish)
+        logger.info('Cannot find stop time, use %.2f', finish)
 
     return start, finish
 
@@ -674,7 +676,7 @@ def process_file(name_mzml, args):
         output = args.output
 
     if (args.refPSM is None) + (args.refFile is None) == 1:
-        logging.error('Not enough files for angle score calculation provided, skipping angle score.')
+        logger.error('Not enough files for angle score calculation provided, skipping angle score.')
 
 
     name = os.path.split(name_mzml)[1].split('.')[0]
@@ -686,23 +688,23 @@ def process_file(name_mzml, args):
     plt_manager = PyplotContextConstructor(args.sf, os.path.join(output, name + '_viQC'), grid_size=(6,2))
 
     if (args.refPSM is not None) and (os.path.split(name_calibr)[1].split('.')[0] not in name_psm):
-        logging.warning('File names for angle score calibration don\'t match!')
+        logger.warning('File names for angle score calibration don\'t match!')
 
     injtime_ms1, injtime_ms2, starttime_ms1, starttime_ms2, indexms1, charge_ms2, \
     mz_ms2, angle_x, angle_y, prec_int, prec_isolated_mz, x, y, coef = read_data(
         name_mzml, name_calibr, extension, name_psm, delim, colname)
 
-    logging.debug('starttime_ms1: %s', starttime_ms1)
+    logger.debug('starttime_ms1: %s', starttime_ms1)
 
     if args.stop is None:
         start, finish = start_finish(indexms1, starttime_ms1) if starttime_ms1 is not None else (None, None)
     else:
         finish = args.stop
         start = args.start
-    logging.debug('start = %s, finish = %s', start, finish)
+    logger.debug('start = %s, finish = %s', start, finish)
     if args.charge is None:
         maxcharge = max(charge_ms2)
-        logging.info('Maximum charge in file: %s', maxcharge)
+        logger.info('Maximum charge in file: %s', maxcharge)
     else:
         maxcharge = args.charge
 
@@ -755,7 +757,7 @@ def process_file(name_mzml, args):
         # outname = os.path.join(output, name + '_viQC.svg')
         # plt.savefig(outname)
         plt.close(fig)
-    logging.info("Calculating metrics for %s", name)
+    logger.info("Calculating metrics for %s", name)
     return ms1_f, ms2_f, mean_it_f, perc_95_it_f, mean_prec_f, rsme_prec_f, std_prec_f, ch_state_numbers, fit_realtop, median_peaks_ms2, median_intens_ms2, per, MI_error_percent
 
 
@@ -764,7 +766,7 @@ def mult_process(name_files, args):
     for name_mzml in name_files:
         for value, value_list in zip(process_file(name_mzml, args), results_mult):
             value_list.append(value)
-            
+
     if args.output is None:
         output = os.path.split(name_mzml)[0]
     else:
@@ -773,7 +775,7 @@ def mult_process(name_files, args):
 
     names_full = [os.path.split(x)[1].split('.')[0] for x in name_files]
     names = name_red(names_full)
-    logging.info("Combine all together...")
+    logger.info("Combine all together...")
     #  build common pictures
     grid_manager = GridOrSaveContextConstructor(
         args.sf, os.path.splitext(outname)[0], grid_size=(4, 2),
@@ -806,7 +808,7 @@ def mult_process(name_files, args):
     if not args.sf:
         grid_manager.f.savefig(outname)
 
-    logging.info('Output common figure saved to %s', outname)
+    logger.info('Output common figure saved to %s', outname)
 
 
 class StatsHandler(logging.Handler):
@@ -864,13 +866,13 @@ def main():
     logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
                         datefmt='[%H:%M:%S]', level=(logging.INFO, logging.DEBUG)[args.debug], filename=args.logname)
     stats = StatsHandler()
-    logging.getLogger().addHandler(stats)
+    logger.addHandler(stats)
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
     exist = True
     for infile in args.input:
         if not os.path.exists(infile):
-            logging.error("Could not find the input file %s", infile)
+            logger.error("Could not find the input file %s", infile)
             exist = False
 
     if not exist:
@@ -882,9 +884,9 @@ def main():
     else:
         mult_process(args.input, args)
 
-    logging.info('There were %s error(s), %s warning(s).', stats.level2count[logging.ERROR],
+    logger.info('There were %s error(s), %s warning(s).', stats.level2count[logging.ERROR],
                  stats.level2count[logging.WARNING])
-    logging.info('Enjoy your QC!')
+    logger.info('Enjoy your QC!')
 
 
 if __name__ == '__main__':
