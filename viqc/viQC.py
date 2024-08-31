@@ -823,6 +823,31 @@ class StatsHandler(logging.Handler):
         self.level2count[l] += 1
 
 
+def run(args):
+    stats = StatsHandler()
+    logger.addHandler(stats)
+    logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
+    exist = True
+    for infile in args.input:
+        if not os.path.exists(infile):
+            logger.error("Could not find the input file %s", infile)
+            exist = False
+
+    if not exist:
+        return
+
+    if len(args.input) == 1:
+        infile = args.input[0]
+        process_file(infile, args)
+    else:
+        mult_process(args.input, args)
+
+    logger.info('There were %s error(s), %s warning(s).', stats.level2count[logging.ERROR],
+                 stats.level2count[logging.WARNING])
+    logger.info('Enjoy your QC!')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input', nargs='+',
@@ -865,28 +890,8 @@ def main():
 
     logging.basicConfig(format='%(levelname)7s: %(asctime)s %(message)s',
                         datefmt='[%H:%M:%S]', level=(logging.INFO, logging.DEBUG)[args.debug], filename=args.logname)
-    stats = StatsHandler()
-    logger.addHandler(stats)
-    logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
-    exist = True
-    for infile in args.input:
-        if not os.path.exists(infile):
-            logger.error("Could not find the input file %s", infile)
-            exist = False
-
-    if not exist:
-        return
-
-    if len(args.input) == 1:
-        infile = args.input[0]
-        process_file(infile, args)
-    else:
-        mult_process(args.input, args)
-
-    logger.info('There were %s error(s), %s warning(s).', stats.level2count[logging.ERROR],
-                 stats.level2count[logging.WARNING])
-    logger.info('Enjoy your QC!')
+    run(args)
 
 
 if __name__ == '__main__':
