@@ -600,8 +600,7 @@ def it_ms1_mult(names, mean_it_ms1, perc_95, sps, f: Figure):
     a = np.arange(0, n_files)
     g00 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=sps)
     ax = f.add_subplot(g00[:, :])
-    ax.errorbar(a, mean_it_ms1, perc_95, linestyle='None', capsize=10, fmt='-o', color=COLORS[0], ecolor='black',
-                   elinewidth=1)
+    ax.errorbar(a, mean_it_ms1, perc_95, capsize=10, fmt='o:', color=COLORS[0], ecolor='black', elinewidth=1)
     ax.set_xticks(np.arange(n_files), names, rotation=60, fontsize=15)
     ax.set_ylim(min(np.array(mean_it_ms1) - np.array(perc_95)) - 1, max(np.array(mean_it_ms1) + np.array(perc_95)) + 1)
     #ax.legend(loc=1, fontsize=15)
@@ -617,7 +616,13 @@ def prec_int_mult(names, input_data, sps, f: Figure):
     for i in range(3):
         ax = f.add_subplot(gs11[i, :])
         ax.plot(a, input_data[i], 'o:', color=COLORS[i], label=input_names[i])
-        ax.set_ylim(min(input_data[i]) - max(input_data[i]) / 10, max(input_data[i]) + max(input_data[i]) / 10)
+        try:
+            ax.set_ylim(min(input_data[i]) - max(input_data[i]) / 10, max(input_data[i]) * 1.1)
+        except TypeError as e:
+            # exception expected if precursor intensity data not available
+            if "not supported between instances" not in e.args[0]:
+                raise
+
         ax.legend()
         ax.set_xticks(range(len(names)))
         ax.tick_params(axis='x', colors='w')
