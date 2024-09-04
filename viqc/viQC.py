@@ -334,16 +334,24 @@ def it_ms1(starttime_ms1, injtime_ms1, start, finish, mult):
 
 
 def monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult):
-    if set(prec_isolated_mz) == {None}:
+    smz = set(prec_isolated_mz)
+    logger.debug('monoisotopic_error, set of prec_isolated_mz: %s', len(smz))
+    if smz == {None}:
         plt.text(0.5, 0.5, 'Prec. isolation m/z information missing', ha='center')
         return None, None, None
 
     mask = [i != 0 for i in charge_ms2]
+    smask = sum(mask)
+    if not smask:
+        plt.text(0.5, 0.5, 'MS2 charge information missing', ha='center')
+        return None, None, None
+    logger.debug('monoisotopic_error, mask sum: %d', smask)
     zeros = charge_ms2.count(0)
     isolated = np.array(prec_isolated_mz)[mask]
     mono = np.array(mz_ms2)[mask]
     ch = np.array(charge_ms2)[mask]
     diff = (isolated - mono) * ch
+    logger.debug('monoisotopic_error, diff: %s', diff)
 
     plt.hist(np.round(diff, 0), bins=np.arange(-0.25, 5, 1), width=0.5, align='mid', color=COLORS[2])
     a, b = np.histogram(diff, bins=np.arange(-0.25, 5, 1))
