@@ -338,13 +338,13 @@ def monoisotopic_error(charge_ms2, mz_ms2, prec_isolated_mz, mult):
     logger.debug('monoisotopic_error, set of prec_isolated_mz: %s', len(smz))
     if smz == {None}:
         plt.text(0.5, 0.5, 'Prec. isolation m/z information missing', ha='center')
-        return None, None, None
+        return None
 
     mask = [i != 0 for i in charge_ms2]
     smask = sum(mask)
     if not smask:
         plt.text(0.5, 0.5, 'MS2 charge information missing', ha='center')
-        return None, None, None
+        return None
     logger.debug('monoisotopic_error, mask sum: %d', smask)
     zeros = charge_ms2.count(0)
     isolated = np.array(prec_isolated_mz)[mask]
@@ -667,13 +667,19 @@ def real_top_mult(names, fit, sps, f: Figure):
 
 
 def simple_graph_mult(names, values, title, sps, f: Figure):
+    values = np.array(values, dtype=float)
+    logger.debug('simple_graph_mult, names: %s', names)
+    logger.debug('simple_graph_mult, values: %s', values)
     a = range(len(names))
     gs00 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=sps)
     ax = f.add_subplot(gs00[:, :])
     ax.plot(a, values, 'o:', color=COLORS[3])
     ax.set_title(title)
-    r = (max(values) - min(values)) / 10
-    ax.set_ylim(min(values) - r, max(values) + r)
+    r = (values.max() - values.min()) / 10
+    try:
+        ax.set_ylim(min(values) - r, max(values) + r)
+    except ValueError:  # there is no range
+        pass
     ax.set_xticks(a, names, rotation=60)
     #plt.legend()
 
